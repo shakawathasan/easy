@@ -1,0 +1,2705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+<title>SohoJ Clinic — Smart Queue &amp; Pre-Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&family=Merriweather:wght@400;700&family=Roboto:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0E6E67">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SohoJ Clinic">
+<!-- Backend (Supabase), spreadsheet export (SheetJS) and Word export (html-docx-js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+<style>
+:root{
+  --bg:#F6F9F8;
+  --surface:#FFFFFF;
+  --surface-2:#EEF4F3;
+  --text:#132321;
+  --text-dim:#5B6E6B;
+  --border:#DCE6E3;
+  --teal:#0E6E67;
+  --teal-dark:#0A4F4A;
+  --teal-tint:#E3F2EF;
+  --blue:#2E6BA6;
+  --blue-tint:#E7F0F9;
+  --success:#2F8558;
+  --success-tint:#E5F5EC;
+  --warning:#B9791C;
+  --warning-tint:#FBF0DE;
+  --danger:#C0392B;
+  --danger-tint:#FBEAE8;
+  --radius-sm:8px;
+  --radius:14px;
+  --radius-lg:22px;
+  --shadow:0 1px 2px rgba(19,35,33,.06), 0 6px 20px rgba(19,35,33,.05);
+  --font: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --bg:#0F1715;
+    --surface:#17211F;
+    --surface-2:#1D2926;
+    --text:#EAF2F0;
+    --text-dim:#93A7A3;
+    --border:#2A3835;
+    --teal:#3FBDB2;
+    --teal-dark:#7EE0D6;
+    --teal-tint:#173230;
+    --blue:#7FB2E0;
+    --blue-tint:#152A38;
+    --success:#5FC98B;
+    --success-tint:#123527;
+    --warning:#E3B15E;
+    --warning-tint:#3A2C10;
+    --danger:#E8877B;
+    --danger-tint:#3A1714;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1715;
+  --surface:#17211F;
+  --surface-2:#1D2926;
+  --text:#EAF2F0;
+  --text-dim:#93A7A3;
+  --border:#2A3835;
+  --teal:#3FBDB2;
+  --teal-dark:#7EE0D6;
+  --teal-tint:#173230;
+  --blue:#7FB2E0;
+  --blue-tint:#152A38;
+  --success:#5FC98B;
+  --success-tint:#123527;
+  --warning:#E3B15E;
+  --warning-tint:#3A2C10;
+  --danger:#E8877B;
+  --danger-tint:#3A1714;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+body{font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+body.big-text{font-size:19px;}
+body.big-text h1{font-size:2.1em;}
+body.high-contrast{--bg:#FFFFFF;--surface:#FFFFFF;--text:#000000;--text-dim:#000000;--border:#000000;--teal:#00524A;--teal-tint:#DFF3EF;}
+img,svg{max-width:100%;}
+button{font-family:inherit;}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;}
+a{color:var(--teal);}
+.app{max-width:980px;margin:0 auto;padding:16px 16px 64px;min-height:100vh;}
+.app.wide{max-width:1180px;}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px 18px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer;background:none;border:none;padding:0;}
+.brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(155deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+.brand-text{text-align:left;}
+.brand-name{font-weight:800;font-size:17px;color:var(--text);line-height:1.15;}
+.brand-sub{font-size:11.5px;color:var(--text-dim);}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+.lang-toggle{display:flex;border:1.5px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface);}
+.lang-toggle button{border:none;background:none;padding:7px 14px;font-size:13.5px;font-weight:600;color:var(--text-dim);cursor:pointer;}
+.lang-toggle button.active{background:var(--teal);color:#fff;}
+
+.icon-btn{width:38px;height:38px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.chip-btn{border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600;cursor:pointer;}
+.chip-btn.on{background:var(--teal-tint);border-color:var(--teal);color:var(--teal-dark);}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;border:none;padding:13px 20px;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform .08s ease;font-family:inherit;}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--teal);color:#fff;}
+.btn-primary:hover{background:var(--teal-dark);}
+.btn-secondary{background:var(--surface);color:var(--text);border:1.5px solid var(--border);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-ghost{background:transparent;color:var(--teal);padding:10px 6px;}
+.btn-block{width:100%;}
+.btn-lg{padding:18px 22px;font-size:17px;border-radius:16px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+.section-title{font-size:13px;font-weight:700;color:var(--text-dim);margin:26px 0 10px;padding-left:2px;}
+.section-title:first-child{margin-top:4px;}
+
+/* home hero */
+.hero{text-align:center;padding:22px 6px 6px;}
+.hero h1{font-size:1.7em;margin:0 0 8px;font-weight:800;letter-spacing:-.01em;}
+.hero p{color:var(--text-dim);margin:0 0 22px;font-size:15px;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:480px){.home-grid{grid-template-columns:1fr;}}
+.home-tile{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:22px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.home-tile:hover{border-color:var(--teal);}
+.home-tile .emoji{font-size:30px;}
+.home-tile .label{font-weight:700;font-size:15px;}
+.home-tile .desc{font-size:12.5px;color:var(--text-dim);}
+
+/* forms */
+.field{margin-bottom:16px;}
+.field label{display:block;font-weight:600;font-size:14px;margin-bottom:6px;}
+.field .hint{font-size:12.5px;color:var(--text-dim);margin-top:5px;}
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],textarea,select{
+  width:100%;padding:12px 13px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:15.5px;font-family:inherit;
+}
+textarea{min-height:80px;resize:vertical;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:520px){.grid2{grid-template-columns:1fr;}}
+.pill-select{display:flex;flex-wrap:wrap;gap:8px;}
+.pill-select button{border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;}
+.pill-select button.sel{background:var(--teal);border-color:var(--teal);color:#fff;}
+.upload-box{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;}
+.upload-box:hover{border-color:var(--teal);}
+.file-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:13.5px;}
+
+/* stepper */
+.steps{display:flex;gap:6px;margin-bottom:20px;}
+.steps div{flex:1;height:5px;border-radius:4px;background:var(--border);}
+.steps div.done{background:var(--teal);}
+
+/* status badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+.badge-waiting{background:var(--blue-tint);color:var(--blue);}
+.badge-called{background:var(--warning-tint);color:var(--warning);}
+.badge-progress{background:var(--teal-tint);color:var(--teal-dark);}
+.badge-done{background:var(--success-tint);color:var(--success);}
+.badge-missed{background:var(--danger-tint);color:var(--danger);}
+.badge-urgent{background:var(--danger);color:#fff;}
+.badge-priority{background:var(--warning-tint);color:var(--warning);}
+
+/* token display */
+.token-hero{text-align:center;padding:26px 16px;background:linear-gradient(160deg,var(--teal-tint),var(--surface));border-radius:var(--radius-lg);border:1px solid var(--border);}
+.token-num{font-size:52px;font-weight:800;color:var(--teal-dark);letter-spacing:.01em;line-height:1;}
+.token-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+.token-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;}
+.token-stat b{display:block;font-size:20px;}
+.token-stat span{font-size:12px;color:var(--text-dim);}
+
+/* alerts */
+.alert{border-radius:12px;padding:14px 16px;font-size:14px;display:flex;gap:10px;align-items:flex-start;}
+.alert-urgent{background:var(--danger-tint);color:var(--danger);border:1.5px solid var(--danger);}
+.alert-info{background:var(--blue-tint);color:var(--blue);}
+.alert-success{background:var(--success-tint);color:var(--success);}
+
+/* queue list rows */
+.qrow{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);}
+.qrow:last-child{border-bottom:none;}
+.qtoken{width:52px;height:52px;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;}
+.qmain{flex:1;min-width:0;}
+.qname{font-weight:700;font-size:14.5px;}
+.qmeta{font-size:12.5px;color:var(--text-dim);}
+.qactions{display:flex;gap:6px;flex-wrap:wrap;}
+.small-btn{border:1.5px solid var(--border);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--text);}
+.small-btn.primary{background:var(--teal);border-color:var(--teal);color:#fff;}
+.small-btn.danger{background:var(--danger-tint);border-color:var(--danger);color:var(--danger);}
+
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--surface-2);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto;}
+.tabs button{flex:1;white-space:nowrap;border:none;background:none;padding:10px 12px;border-radius:9px;font-weight:700;font-size:13.5px;color:var(--text-dim);cursor:pointer;}
+.tabs button.active{background:var(--surface);color:var(--teal-dark);box-shadow:var(--shadow);}
+
+/* login */
+.login-wrap{max-width:400px;margin:40px auto;}
+.demo-acc{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--text-dim);margin-top:14px;line-height:1.7;}
+
+/* stat grid */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px;}
+.stat-card .v{font-size:24px;font-weight:800;color:var(--teal-dark);}
+.stat-card .l{font-size:12px;color:var(--text-dim);margin-top:2px;}
+
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.bar-label{width:100px;font-size:12.5px;color:var(--text-dim);flex-shrink:0;}
+.bar-track{flex:1;height:16px;background:var(--surface-2);border-radius:8px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--teal);border-radius:8px;}
+.bar-val{width:36px;text-align:right;font-size:12.5px;font-weight:700;flex-shrink:0;}
+
+.timeline-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.timeline-item:last-child{border-bottom:none;}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);margin-top:5px;flex-shrink:0;}
+.tl-date{font-size:12px;color:var(--text-dim);}
+.tl-title{font-weight:700;font-size:14px;}
+
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,18,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+@media (min-width:640px){.modal-bg{align-items:center;}}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow:auto;}
+@media (min-width:640px){.modal{border-radius:20px;}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.modal-head h3{margin:0;font-size:17px;}
+
+.empty{text-align:center;padding:40px 16px;color:var(--text-dim);}
+.empty .em{font-size:34px;margin-bottom:8px;}
+
+.footer-note{text-align:center;font-size:11.5px;color:var(--text-dim);margin-top:40px;padding:0 20px;line-height:1.6;}
+.skiplink{position:fixed;top:-40px;left:8px;background:var(--teal);color:#fff;padding:8px 12px;border-radius:8px;z-index:100;}
+.skiplink:focus{top:8px;}
+.voice-btn{background:var(--teal-tint);color:var(--teal-dark);border:none;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+.spinner{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ai-box{background:var(--teal-tint);border:1px solid var(--teal);border-radius:12px;padding:14px;font-size:13.5px;line-height:1.65;color:var(--text);white-space:pre-wrap;}
+.doc-thumb{background:var(--surface-2);border-radius:10px;padding:10px;font-size:12px;text-align:center;}
+.log-row{font-size:12.5px;color:var(--text-dim);padding:7px 0;border-bottom:1px solid var(--border);}
+.log-row:last-child{border-bottom:none;}
+.priority-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+
+/* connection status */
+.conn-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11.5px;font-weight:700;}
+.conn-online{background:var(--success-tint);color:var(--success);}
+.conn-offline{background:var(--danger-tint);color:var(--danger);}
+.conn-reconnecting{background:var(--warning-tint);color:var(--warning);}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.conn-dot.pulse{animation:pulse 1.2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.sync-note{font-size:11px;color:var(--text-dim);text-align:center;padding:4px 0 10px;}
+
+/* waiting room display */
+.wr-wrap{background:var(--teal-dark);color:#fff;min-height:100vh;margin:-16px -16px -64px;padding:28px 20px 40px;}
+.wr-clinic{text-align:center;font-size:15px;opacity:.85;margin-bottom:18px;font-weight:600;}
+.wr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px;margin:0 auto;}
+@media (max-width:640px){.wr-grid{grid-template-columns:1fr;}}
+.wr-card{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.25);border-radius:22px;padding:24px;text-align:center;}
+.wr-label{font-size:14px;letter-spacing:.12em;opacity:.75;font-weight:700;margin-bottom:10px;}
+.wr-token{font-size:64px;font-weight:800;line-height:1;}
+.wr-doc{margin-top:12px;font-size:15px;opacity:.9;}
+.wr-next{opacity:.75;}
+.wr-next .wr-token{font-size:40px;}
+
+/* offline relay */
+.relay-code{font-size:38px;font-weight:800;letter-spacing:.08em;text-align:center;padding:18px;background:var(--teal-tint);color:var(--teal-dark);border-radius:14px;}
+.your-turn-flash{position:fixed;inset:0;background:var(--teal-dark);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;text-align:center;padding:20px;}
+.your-turn-flash .big{font-size:56px;font-weight:800;margin:14px 0;}
+.perm-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--danger);color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;font-size:14px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+</style>
+</head>
+<body>
+<a href="#main" class="skiplink">Skip to content</a>
+<div id="app" class="app" role="main" id="main"></div>
+
+<script>
+/* ============================== I18N ============================== */
+const STR = {
+  clinicName:{en:"SohoJ Clinic",bn:"সহজ ক্লিনিক"},
+  clinicSub:{en:"Pre-Check & Smart Queue",bn:"প্রি-চেক ও স্মার্ট সিরিয়াল"},
+  bookAppt:{en:"Book Appointment",bn:"অ্যাপয়েন্টমেন্ট নিন"},
+  getToken:{en:"Get Queue Token",bn:"সিরিয়াল নিন"},
+  preCheck:{en:"Complete Pre-Check",bn:"প্রি-চেক পূরণ করুন"},
+  trackQueue:{en:"Track My Queue",bn:"সিরিয়াল দেখুন"},
+  staffLogin:{en:"Staff Login",bn:"স্টাফ লগইন"},
+  heroTitle:{en:"Skip the wait. Check in from home.",bn:"অপেক্ষা কমান। বাসা থেকেই চেক-ইন করুন।"},
+  heroSub:{en:"Simple, fair, and transparent clinic queues.",bn:"সহজ, ন্যায্য ও স্বচ্ছ ক্লিনিক সিরিয়াল ব্যবস্থা।"},
+  bookApptDesc:{en:"Reserve a time with a doctor",bn:"ডাক্তারের সাথে সময় ঠিক করুন"},
+  getTokenDesc:{en:"Walk in and get a number",bn:"সরাসরি এসে নম্বর নিন"},
+  preCheckDesc:{en:"Tell us your symptoms first",bn:"আগে আপনার সমস্যা জানান"},
+  trackDesc:{en:"See your position live",bn:"লাইভ অবস্থান দেখুন"},
+  back:{en:"Back",bn:"পেছনে"},
+  next:{en:"Next",bn:"পরবর্তী"},
+  submit:{en:"Submit",bn:"জমা দিন"},
+  fullName:{en:"Full name",bn:"পুরো নাম"},
+  phone:{en:"Phone number",bn:"ফোন নম্বর"},
+  age:{en:"Age",bn:"বয়স"},
+  gender:{en:"Gender",bn:"লিঙ্গ"},
+  male:{en:"Male",bn:"পুরুষ"},
+  female:{en:"Female",bn:"মহিলা"},
+  other:{en:"Other",bn:"অন্যান্য"},
+  chooseDoctor:{en:"Choose doctor / department",bn:"ডাক্তার / বিভাগ বেছে নিন"},
+  symptoms:{en:"Main symptoms",bn:"প্রধান সমস্যা"},
+  symptomsHint:{en:"E.g. fever, cough, headache",bn:"যেমন: জ্বর, কাশি, মাথাব্যথা"},
+  duration:{en:"How long have you had this?",bn:"কতদিন ধরে এই সমস্যা?"},
+  days:{en:"days",bn:"দিন"},
+  vitals:{en:"Basic vitals (if known)",bn:"মৌলিক শারীরিক তথ্য (জানা থাকলে)"},
+  temp:{en:"Temperature (°F)",bn:"তাপমাত্রা (°F)"},
+  bp:{en:"Blood pressure",bn:"রক্তচাপ"},
+  hr:{en:"Heart rate (bpm)",bn:"হৃদস্পন্দন (bpm)"},
+  spo2:{en:"Oxygen level (%)",bn:"অক্সিজেন লেভেল (%)"},
+  weight:{en:"Weight (kg)",bn:"ওজন (কেজি)"},
+  uploads:{en:"Upload reports or prescriptions",bn:"রিপোর্ট বা প্রেসক্রিপশন আপলোড করুন"},
+  uploadHint:{en:"Tap to choose files (optional)",bn:"ফাইল বাছাই করতে চাপুন (ঐচ্ছিক)"},
+  meds:{en:"Current medications",bn:"বর্তমান ওষুধ"},
+  allergies:{en:"Known allergies",bn:"পরিচিত অ্যালার্জি"},
+  conditions:{en:"Previous medical conditions",bn:"পূর্ববর্তী রোগ"},
+  reasonVisit:{en:"Reason for visit",bn:"ভিজিটের কারণ"},
+  reviewTitle:{en:"Review & Submit",bn:"পর্যালোচনা ও জমা"},
+  yourToken:{en:"Your Token",bn:"আপনার টোকেন"},
+  patientsAhead:{en:"Patients Ahead",bn:"সামনে রোগী"},
+  estWait:{en:"Estimated Waiting",bn:"সম্ভাব্য অপেক্ষা"},
+  min:{en:"min",bn:"মিনিট"},
+  doctorStatus:{en:"Doctor status",bn:"ডাক্তারের অবস্থা"},
+  roomStatus:{en:"Room",bn:"রুম"},
+  currentToken:{en:"Now serving",bn:"এখন চলছে"},
+  urgentBanner:{en:"Your information may require urgent medical attention. Please contact clinic staff immediately or seek emergency medical care.",bn:"আপনার তথ্য জরুরি চিকিৎসা মনোযোগ প্রয়োজন হতে পারে। অনুগ্রহ করে দ্রুত ক্লিনিক স্টাফের সাথে যোগাযোগ করুন বা জরুরি চিকিৎসা নিন।"},
+  aiSummaryTitle:{en:"AI Pre-Check Summary",bn:"এআই প্রি-চেক সারসংক্ষেপ"},
+  aiNote:{en:"This is an organized summary only — not a diagnosis. The doctor will review your full information.",bn:"এটি শুধুমাত্র একটি সংক্ষিপ্তসার — কোনো রোগ নির্ণয় নয়। ডাক্তার আপনার পূর্ণ তথ্য পর্যালোচনা করবেন।"},
+  confirmed:{en:"Confirmed",bn:"নিশ্চিত হয়েছে"},
+  apptConfirmed:{en:"Your appointment is confirmed.",bn:"আপনার অ্যাপয়েন্টমেন্ট নিশ্চিত হয়েছে।"},
+  tokenConfirmed:{en:"Your token is confirmed.",bn:"আপনার টোকেন নিশ্চিত হয়েছে।"},
+  trackNow:{en:"Track my queue",bn:"সিরিয়াল দেখুন"},
+  enterToken:{en:"Enter your token to track",bn:"সিরিয়াল দেখতে টোকেন লিখুন"},
+  find:{en:"Find",bn:"খুঁজুন"},
+  almostTurn:{en:"You are approximately {n} patients away. Please stay near the clinic.",bn:"আপনার সিরিয়াল আসতে আর প্রায় {n} জন বাকি। অনুগ্রহ করে ক্লিনিকের কাছাকাছি থাকুন।"},
+  date:{en:"Date",bn:"তারিখ"},
+  time:{en:"Time",bn:"সময়"},
+  username:{en:"Username",bn:"ইউজারনেম"},
+  pin:{en:"PIN",bn:"পিন"},
+  login:{en:"Log in",bn:"লগইন করুন"},
+  logout:{en:"Log out",bn:"লগআউট"},
+  reception:{en:"Reception",bn:"রিসেপশন"},
+  doctorPanel:{en:"Doctor",bn:"ডাক্তার"},
+  admin:{en:"Admin",bn:"অ্যাডমিন"},
+  registerWalkin:{en:"Register walk-in",bn:"ওয়াক-ইন নিবন্ধন"},
+  callNext:{en:"Call next",bn:"পরবর্তী ডাকুন"},
+  complete:{en:"Complete",bn:"সম্পন্ন"},
+  pause:{en:"Pause",bn:"বিরতি"},
+  resume:{en:"Resume",bn:"পুনরায় শুরু"},
+  missed:{en:"No-show",bn:"অনুপস্থিত"},
+  skip:{en:"Skip",bn:"এড়িয়ে যান"},
+  skipped:{en:"Skipped",bn:"এড়িয়ে যাওয়া হয়েছে"},
+  priorityReview:{en:"Priority review",bn:"অগ্রাধিকার পর্যালোচনা"},
+  recall:{en:"Recall",bn:"পুনরায় ডাকুন"},
+  transfer:{en:"Transfer",bn:"স্থানান্তর"},
+  cancel:{en:"Cancel",bn:"বাতিল"},
+  setPriority:{en:"Set priority",bn:"অগ্রাধিকার নির্ধারণ"},
+  priorityReason:{en:"Reason for priority",bn:"অগ্রাধিকারের কারণ"},
+  viewOriginal:{en:"View Original Documents",bn:"মূল নথি দেখুন"},
+  followUp:{en:"Follow-up required in (days)",bn:"পুনরায় দেখা প্রয়োজন (দিন পরে)"},
+  todaysQueue:{en:"Today's Queue",bn:"আজকের সিরিয়াল"},
+  activityLog:{en:"Activity Log",bn:"কার্যকলাপ লগ"},
+  analytics:{en:"Clinic Analytics",bn:"ক্লিনিক পরিসংখ্যান"},
+  avgWait:{en:"Avg. waiting time",bn:"গড় অপেক্ষার সময়"},
+  avgConsult:{en:"Avg. consultation",bn:"গড় পরামর্শ সময়"},
+  patientsToday:{en:"Patients today",bn:"আজকের রোগী"},
+  noShowRate:{en:"No-show rate",bn:"অনুপস্থিতির হার"},
+  emergencyCases:{en:"Priority cases",bn:"অগ্রাধিকার কেস"},
+  doctorWorkload:{en:"Doctor workload",bn:"ডাক্তারের কাজের চাপ"},
+  askAssistant:{en:"Ask the clinic assistant",bn:"ক্লিনিক সহায়ককে জিজ্ঞাসা করুন"},
+  askPlaceholder:{en:"e.g. How many patients are waiting?",bn:"যেমন: কতজন রোগী অপেক্ষা করছেন?"},
+  ask:{en:"Ask",bn:"জিজ্ঞাসা"},
+  translate:{en:"Translate",bn:"অনুবাদ"},
+  original:{en:"Original",bn:"মূল"},
+  patientHistory:{en:"Patient History",bn:"রোগীর ইতিহাস"},
+  waiting:{en:"Waiting",bn:"অপেক্ষমাণ"},
+  called:{en:"Called",bn:"ডাকা হয়েছে"},
+  inConsult:{en:"In consultation",bn:"পরামর্শ চলছে"},
+  done:{en:"Completed",bn:"সম্পন্ন হয়েছে"},
+  large:{en:"Large text",bn:"বড় লেখা"},
+  contrast:{en:"High contrast",bn:"উচ্চ কনট্রাস্ট"},
+  voiceRead:{en:"Read aloud",bn:"শুনুন"},
+  homeAdmin:{en:"Home",bn:"হোম"},
+  addDoctor:{en:"Add doctor",bn:"ডাক্তার যোগ করুন"},
+  save:{en:"Save",bn:"সংরক্ষণ"},
+  required:{en:"This field is required.",bn:"এই ঘরটি পূরণ করা আবশ্যক।"},
+  demoAccounts:{en:"Demo accounts",bn:"ডেমো অ্যাকাউন্ট"},
+  noneWaiting:{en:"No one is waiting right now.",bn:"এই মুহূর্তে কেউ অপেক্ষা করছেন না।"},
+  tokenNotFound:{en:"We couldn't find that token.",bn:"এই টোকেনটি খুঁজে পাওয়া যায়নি।"},
+  reportsTimeline:{en:"Reports Timeline",bn:"রিপোর্ট সময়রেখা"},
+  noReports:{en:"No reports uploaded yet.",bn:"এখনো কোনো রিপোর্ট আপলোড করা হয়নি।"},
+  appointment:{en:"Appointment",bn:"অ্যাপয়েন্টমেন্ট"},
+  walkin:{en:"Walk-in",bn:"ওয়াক-ইন"},
+  addToQueue:{en:"Add to queue",bn:"সিরিয়ালে যোগ করুন"},
+  available:{en:"Available",bn:"উপলব্ধ"},
+  busy:{en:"With patient",bn:"রোগীর সাথে ব্যস্ত"},
+  offDuty:{en:"Off duty",bn:"অনুপস্থিত"},
+  consentTitle:{en:"Before we continue",bn:"এগোনোর আগে"},
+  consentBody:{en:"Your medical information will only be shared with your doctor and clinic staff who need it for your care.",bn:"আপনার চিকিৎসা তথ্য শুধুমাত্র আপনার ডাক্তার ও প্রয়োজনীয় স্টাফের সাথে শেয়ার করা হবে।"},
+  agree:{en:"I understand and agree",bn:"আমি বুঝেছি এবং সম্মত"},
+  step1:{en:"Symptoms",bn:"লক্ষণ"},
+  step2:{en:"Vitals",bn:"শারীরিক তথ্য"},
+  step3:{en:"History",bn:"ইতিহাস"},
+  step4:{en:"Review",bn:"পর্যালোচনা"},
+};
+let LANG = localStorage.getItem('clinic_lang') || 'en';
+function T(key, vars){
+  let s = (STR[key] && STR[key][LANG]) || STR[key]?.en || key;
+  if(vars) for(const k in vars) s = s.replace('{'+k+'}', vars[k]);
+  return s;
+}
+function setLang(l){ LANG=l; localStorage.setItem('clinic_lang', l); document.documentElement.lang = l; render(); }
+
+/* ============================== HELPERS ============================== */
+function esc(s){ return (s===undefined||s===null? '': String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function nowISO(){ return new Date().toISOString(); }
+function fmtTime(iso){ if(!iso) return '—'; return new Date(iso).toLocaleTimeString(LANG==='bn'?'bn-BD':'en-US',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(iso){ if(!iso) return '—'; return new Date(iso).toLocaleDateString(LANG==='bn'?'bn-BD':'en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+function readAloud(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = LANG==='bn' ? 'bn-BD' : 'en-US';
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ============================== BACKEND CONFIG ============================== */
+// Paste your Supabase project values here (Project Settings -> API in Supabase).
+// The anon key is meant to be public/client-side — that's how Supabase is designed.
+const CONFIG = {
+  SUPABASE_URL: 'https://ujcvqmysziuvuvhiafkb.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqY3ZxbXlzeml1dnV2aGlhZmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDEyNjYsImV4cCI6MjEwNTQxNzI2Nn0._1a2z-gG_7B68gf7sWqhEnmDWP-N3IuuorQ-X0f21rs',
+  NEAR_TURN_DEFAULT: 3,
+};
+function backendConfigured(){
+  return CONFIG.SUPABASE_URL.indexOf('YOUR-PROJECT-REF') === -1 && CONFIG.SUPABASE_ANON_KEY.indexOf('YOUR-ANON') === -1;
+}
+
+/* ============================== DB LAYER ============================== */
+let dbc = null; // supabase client
+let sampleFn = null; // AI summary function (only available inside Claude Artifact preview)
+const COLLECTIONS = ['doctors','queue','patients','precheck','reports','appointments','activityLog','users'];
+const LOCAL_CACHE = {}; COLLECTIONS.forEach(c=>LOCAL_CACHE[c]=[]);
+const LOCAL = {}; COLLECTIONS.forEach(c=>LOCAL[c]=[]); // used only when Supabase is not configured
+let DB_READY = false;
+let realtimeChannel = null;
+
+/* ============================== LOCAL WI-FI RELAY (item: receptionist offline relay) ==============================
+   Real peer-to-peer over the clinic's local Wi-Fi/hotspot, no internet required.
+   Uses WebRTC with only local-network ("host") ICE candidates — no STUN/TURN server,
+   so it needs no internet even to establish the connection, unlike most WebRTC demos.
+   Signaling (exchanging the connection info) is manual copy/paste since there's no
+   internet to run a signaling server either — this is the physical-proximity step,
+   same idea as the earlier manual code, but once connected, updates flow live and
+   automatically instead of needing a new code each time.
+   CAVEAT (stated honestly, not detectable from JS): this needs the Wi-Fi/hotspot to
+   allow device-to-device ("peer") traffic. Many phone hotspots and most guest/enterprise
+   networks block that ("client/AP isolation") — a plain home/office router usually
+   allows it. If pairing hangs at "Waiting for connection...", that's almost always why. */
+let relayPC = null, relayChannel = null;
+function relayResetLocal(){ try{ relayChannel && relayChannel.close(); }catch(e){} try{ relayPC && relayPC.close(); }catch(e){} relayPC=null; relayChannel=null; state.localRelay = {role:null, status:'idle', offerCode:'', answerCode:'', receivedCode:'', tokenId:'', received:null}; }
+async function waitIceComplete(pc){
+  if(pc.iceGatheringState==='complete') return;
+  await new Promise(resolve=>{
+    function check(){ if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', check); resolve(); } }
+    pc.addEventListener('icegatheringstatechange', check);
+    setTimeout(resolve, 3000); // don't hang forever if gathering stalls
+  });
+}
+function relayPayloadFromDoc(doc){
+  if(!doc) return null;
+  const {ahead} = positionInQueue(doc);
+  const doctor = getAll('doctors').find(d=>d.id===doc.doctorId);
+  return { token:doc.token, status:doc.status, ahead, doctor: doctor ? (LANG==='bn'?doctor.nameBn:doctor.name) : '', room: doctor?doctor.room:'', at: nowISO() };
+}
+function relayBroadcastIfPaired(collection, id, doc){
+  if(collection!=='queue' || !relayChannel || relayChannel.readyState!=='open') return;
+  if(!state.localRelay || state.localRelay.tokenId!==id) return;
+  const payload = relayPayloadFromDoc(doc || findQueueEntry(id));
+  if(payload){ try{ relayChannel.send(JSON.stringify(payload)); }catch(e){} }
+}
+async function relayHostStart(tokenId){
+  relayResetLocal();
+  state.localRelay = {role:'host', status:'connecting', offerCode:'', answerCode:'', receivedCode:'', tokenId, received:null};
+  render();
+  relayPC = new RTCPeerConnection({iceServers:[]});
+  relayChannel = relayPC.createDataChannel('clinicRelay');
+  relayChannel.onopen = ()=>{ state.localRelay.status='connected'; const p=relayPayloadFromDoc(findQueueEntry(tokenId)); if(p){ try{relayChannel.send(JSON.stringify(p));}catch(e){} } render(); };
+  relayChannel.onclose = ()=>{ state.localRelay.status='closed'; render(); };
+  const offer = await relayPC.createOffer();
+  await relayPC.setLocalDescription(offer);
+  await waitIceComplete(relayPC);
+  state.localRelay.offerCode = btoa(JSON.stringify(relayPC.localDescription));
+  state.localRelay.status = 'awaiting-answer';
+  render();
+}
+async function relayHostApplyAnswer(answerCodeRaw){
+  try{
+    const answer = JSON.parse(atob(answerCodeRaw.trim()));
+    await relayPC.setRemoteDescription(answer);
+    state.localRelay.status = 'connecting';
+    render();
+  }catch(e){ alert(LANG==='bn'?'কোডটি সঠিক নয়।':'That code doesn\u2019t look valid.'); }
+}
+async function relayGuestJoin(offerCodeRaw){
+  relayResetLocal();
+  state.localRelay = {role:'guest', status:'connecting', offerCode:'', answerCode:'', receivedCode:'', tokenId:'', received:null};
+  render();
+  try{
+    const offer = JSON.parse(atob(offerCodeRaw.trim()));
+    relayPC = new RTCPeerConnection({iceServers:[]});
+    relayPC.ondatachannel = (e)=>{
+      relayChannel = e.channel;
+      relayChannel.onopen = ()=>{ state.localRelay.status='connected'; render(); };
+      relayChannel.onclose = ()=>{ state.localRelay.status='closed'; render(); };
+      relayChannel.onmessage = (ev)=>{ try{ state.localRelay.received = JSON.parse(ev.data); }catch(e){} render(); };
+    };
+    await relayPC.setRemoteDescription(offer);
+    const answer = await relayPC.createAnswer();
+    await relayPC.setLocalDescription(answer);
+    await waitIceComplete(relayPC);
+    state.localRelay.answerCode = btoa(JSON.stringify(relayPC.localDescription));
+    state.localRelay.status = 'awaiting-connection';
+    render();
+  }catch(e){ alert(LANG==='bn'?'কোডটি সঠিক নয়।':'That code doesn\u2019t look valid.'); state.localRelay.status='idle'; render(); }
+}
+
+/* ---- connection state ---- */
+const connState = { status: navigator.onLine ? 'online' : 'offline', lastSync: null, pendingCount: 0 };
+function setConn(status){ connState.status = status; render(); }
+function touchSync(){ connState.lastSync = nowISO(); if(typeof render==='function') render(); }
+window.addEventListener('online', ()=>{ setConn('reconnecting'); flushOfflineQueue(); });
+window.addEventListener('offline', ()=> setConn('offline'));
+// Local-fallback mode (no Supabase configured yet) still shares data across tabs
+// of the SAME browser via localStorage's cross-tab 'storage' event, so testing
+// admin/doctor/reception/patient in separate tabs works before Supabase is wired up.
+// It does NOT reach a different device/phone — that needs the real backend.
+window.addEventListener('storage', (e)=>{
+  if(e.key==='clinic_local_data' && !dbc){
+    try{ const saved = JSON.parse(e.newValue||'null'); if(saved){ Object.assign(LOCAL, saved); loadSettings().then(render); } }catch(err){}
+  }
+});
+
+/* ---- tiny IndexedDB wrapper for the offline pending-write queue ---- */
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open('clinic_offline_db', 1);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains('pending')) db.createObjectStore('pending', {keyPath:'qid', autoIncrement:true});
+      if(!db.objectStoreNames.contains('cache')) db.createObjectStore('cache', {keyPath:'key'});
+    };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbAdd(storeName, value){
+  try{ const db = await idbOpen(); return new Promise((res,rej)=>{
+    const tx = db.transaction(storeName,'readwrite'); tx.objectStore(storeName).add(value);
+    tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+  });}catch(e){ return false; }
+}
+async function idbPut(storeName, value){
+  try{ const db = await idbOpen(); return new Promise((res,rej)=>{
+    const tx = db.transaction(storeName,'readwrite'); tx.objectStore(storeName).put(value);
+    tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+  });}catch(e){ return false; }
+}
+async function idbGetAll(storeName){
+  try{ const db = await idbOpen(); return new Promise((res,rej)=>{
+    const tx = db.transaction(storeName,'readonly'); const r = tx.objectStore(storeName).getAll();
+    r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error);
+  });}catch(e){ return []; }
+}
+async function idbDelete(storeName, key){
+  try{ const db = await idbOpen(); return new Promise((res,rej)=>{
+    const tx = db.transaction(storeName,'readwrite'); tx.objectStore(storeName).delete(key);
+    tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error);
+  });}catch(e){ return false; }
+}
+async function queueOffline(op){
+  await idbAdd('pending', Object.assign({at: nowISO()}, op));
+  connState.pendingCount = (await idbGetAll('pending')).length;
+}
+async function flushOfflineQueue(){
+  if(!dbc) return;
+  const items = await idbGetAll('pending');
+  if(!items.length){ setConn('online'); touchSync(); return; }
+  for(const item of items){
+    try{
+      if(item.kind==='upsert') await dbc.from('docs').upsert({collection:item.collection, id:item.id, data:item.data});
+      else if(item.kind==='delete') await dbc.from('docs').delete().eq('collection',item.collection).eq('id',item.id);
+      await idbDelete('pending', item.qid);
+    }catch(e){ setConn('offline'); return; } // stop, retry later
+  }
+  connState.pendingCount = 0;
+  setConn('online'); touchSync();
+  render();
+}
+
+function defaultSettings(){
+  return {
+    clinicName:{en:'SohoJ Clinic', bn:'সহজ ক্লিনিক'},
+    clinicSub:{en:'Pre-Check & Smart Queue', bn:'প্রি-চেক ও স্মার্ট সিরিয়াল'},
+    heroTitle:{en:'Skip the wait. Check in from home.', bn:'অপেক্ষা কমান। বাসা থেকেই চেক-ইন করুন।'},
+    heroSub:{en:'Simple, fair, and transparent clinic queues.', bn:'সহজ, ন্যায্য ও স্বচ্ছ ক্লিনিক সিরিয়াল ব্যবস্থা।'},
+    logoEmoji:'🏥', logoAssetUrl:'', showDemoAccounts:true,
+    font: 'inter',
+    cards: {}, // per-card admin overrides — {icon,titleEn,titleBn,descEn,descBn,bg,border,text,subtitle}
+  };
+}
+// Registry of editable cards. Extensible (item 4): add an entry here and it
+// automatically gets an admin editor + shows up wherever renderCard() is used —
+// customization isn't hardcoded to just these four.
+const CARD_REGISTRY = {
+  bookAppt:   {icon:'🩺', titleEn:'Book Appointment', titleBn:'অ্যাপয়েন্টমেন্ট নিন', descEn:'Reserve a time with a doctor', descBn:'ডাক্তারের সাথে সময় ঠিক করুন', action:'go-book'},
+  getToken:   {icon:'🎫', titleEn:'Get Queue Token', titleBn:'সিরিয়াল নিন', descEn:'Walk in and get a number', descBn:'সরাসরি এসে নম্বর নিন', action:'go-quicktoken'},
+  preCheck:   {icon:'📋', titleEn:'Complete Pre-Check', titleBn:'প্রি-চেক করুন', descEn:'Tell us your symptoms first', descBn:'প্রথমে উপসর্গ জানান', action:'go-precheck'},
+  trackQueue: {icon:'📍', titleEn:'Track My Queue', titleBn:'আমার সিরিয়াল দেখুন', descEn:'See your position live', descBn:'লাইভ অবস্থান দেখুন', action:'go-track'},
+};
+function getCardMeta(key){
+  const base = CARD_REGISTRY[key] || {};
+  const override = (SETTINGS.cards && SETTINGS.cards[key]) || {};
+  return Object.assign({}, base, override); // saved override always wins — never silently reverts (item 9/10)
+}
+function ensureCardDraft(){
+  if(!state.cardEditKey) state.cardEditKey = 'bookAppt';
+  if(!state.cardEditDraft) state.cardEditDraft = Object.assign({}, getCardMeta(state.cardEditKey));
+}
+function switchCardEdit(key){ state.cardEditKey = key; state.cardEditDraft = Object.assign({}, getCardMeta(key)); render(); }
+// IMPORTANT: this must NOT call the full render() — that replaces app.innerHTML
+// on every keystroke and kicks focus out of whatever field the admin is typing
+// in. Only the small preview region updates live; the rest of the form is untouched.
+function updateCardDraft(field, value){ ensureCardDraft(); state.cardEditDraft[field] = value; refreshCardPreview(); }
+function refreshCardPreview(){
+  const el = document.getElementById('card-preview-region');
+  if(el) el.innerHTML = renderHomeTilePreview(state.cardEditDraft);
+}
+function removeCardIcon(){ ensureCardDraft(); state.cardEditDraft.icon = ''; render(); }
+async function saveCardEdit(){
+  ensureCardDraft();
+  const key = state.cardEditKey;
+  const d = state.cardEditDraft;
+  const cards = Object.assign({}, SETTINGS.cards);
+  cards[key] = { icon:d.icon, titleEn:d.titleEn, titleBn:d.titleBn, descEn:d.descEn, descBn:d.descBn, bg:d.bg, border:d.border, text:d.text, subtitle:d.subtitle };
+  await saveSettings({cards});
+  await log('Card customized', key);
+}
+async function resetCardToDefault(){
+  ensureCardDraft();
+  const key = state.cardEditKey;
+  const cards = Object.assign({}, SETTINGS.cards);
+  delete cards[key];
+  await saveSettings({cards});
+  state.cardEditDraft = Object.assign({}, getCardMeta(key));
+  render();
+}
+function cardCustomizationHTML(){
+  ensureCardDraft();
+  const d = state.cardEditDraft;
+  const opt = k=>`<option value="${k}" ${state.cardEditKey===k?'selected':''}>${esc(CARD_REGISTRY[k].titleEn)}</option>`;
+  return `
+  <div class="section-title">${LANG==='bn'?'কার্ড কাস্টমাইজেশন':'Card customization'}</div>
+  <div class="field">
+    <label>${LANG==='bn'?'কার্ড বাছাই করুন':'Choose a card'}</label>
+    <select onchange="switchCardEdit(this.value)">${Object.keys(CARD_REGISTRY).map(opt).join('')}</select>
+  </div>
+  <div class="grid2" style="grid-template-columns:repeat(2,1fr);">
+    ${colorFieldHTML(LANG==='bn'?'কার্ড ব্যাকগ্রাউন্ড':'Card background colour', 'cardedit_bg', d.bg||'#FFFFFF', "updateCardDraft('bg', v)")}
+    ${colorFieldHTML(LANG==='bn'?'কার্ড বর্ডার':'Card border colour', 'cardedit_border', d.border||'#E3E8E6', "updateCardDraft('border', v)")}
+    ${colorFieldHTML(LANG==='bn'?'কার্ড টেক্সট':'Card text colour', 'cardedit_text', d.text||'#132321', "updateCardDraft('text', v)")}
+    ${colorFieldHTML(LANG==='bn'?'কার্ড সাবটাইটেল':'Card subtitle colour', 'cardedit_subtitle', d.subtitle||'#6B7B77', "updateCardDraft('subtitle', v)")}
+  </div>
+  <div class="field">
+    <label>${LANG==='bn'?'ইমোজি/আইকন':'Icon / Emoji'}</label>
+    <div style="display:flex;gap:8px;">
+      <input type="text" class="card-icon-input" maxlength="4" style="width:70px;text-align:center;font-size:20px;" value="${esc(d.icon||'')}" oninput="updateCardDraft('icon', this.value)">
+      <button class="btn btn-secondary" data-action="card-remove-icon" type="button">${LANG==='bn'?'আইকন সরান':'Remove Icon'}</button>
+    </div>
+  </div>
+  <div class="field"><label>${LANG==='bn'?'শিরোনাম (ইংরেজি)':'Title (English)'}</label><input type="text" value="${esc(d.titleEn||'')}" oninput="updateCardDraft('titleEn', this.value)"></div>
+  <div class="field"><label>${LANG==='bn'?'শিরোনাম (বাংলা)':'Title (Bangla)'}</label><input type="text" value="${esc(d.titleBn||'')}" oninput="updateCardDraft('titleBn', this.value)"></div>
+  <div class="field"><label>${LANG==='bn'?'বিবরণ (ইংরেজি)':'Description (English)'}</label><input type="text" value="${esc(d.descEn||'')}" oninput="updateCardDraft('descEn', this.value)"></div>
+  <div class="field"><label>${LANG==='bn'?'বিবরণ (বাংলা)':'Description (Bangla)'}</label><input type="text" value="${esc(d.descBn||'')}" oninput="updateCardDraft('descBn', this.value)"></div>
+
+  <div class="section-title" style="font-size:13px;">${LANG==='bn'?'প্রিভিউ':'Preview'}</div>
+  <div class="home-grid" id="card-preview-region" style="margin-bottom:16px;">${renderHomeTilePreview(d)}</div>
+
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-primary" style="flex:1;" data-action="card-save" type="button">${LANG==='bn'?'পরিবর্তন সংরক্ষণ করুন':'Save Changes'}</button>
+    <button class="btn btn-ghost" data-action="card-reset-default" type="button">${LANG==='bn'?'ডিফল্টে ফিরুন':'Reset to default'}</button>
+  </div>
+  `;
+}
+function renderHomeTilePreview(d){
+  const iconHTML = d.icon ? `<div class="emoji">${esc(d.icon)}</div>` : '';
+  const style = [d.bg?`background:${d.bg}`:'', d.border?`border-color:${d.border}`:''].filter(Boolean).join(';');
+  const title = LANG==='bn' ? (d.titleBn||d.titleEn) : (d.titleEn||d.titleBn);
+  const desc = LANG==='bn' ? (d.descBn||d.descEn) : (d.descEn||d.descBn);
+  return `<div class="home-tile" style="${style};pointer-events:none;">${iconHTML}<div class="label" style="color:${esc(d.text||'inherit')}">${esc(title)}</div><div class="desc" style="color:${esc(d.subtitle||'inherit')}">${esc(desc)}</div></div>`;
+}
+function renderHomeTile(key){
+  const m = getCardMeta(key);
+  // Removing the icon must not break the card (item 8) — just skip that element.
+  const iconHTML = m.icon ? `<div class="emoji">${esc(m.icon)}</div>` : '';
+  const styleParts = [];
+  if(m.bg) styleParts.push(`background:${m.bg}`);
+  if(m.border) styleParts.push(`border-color:${m.border}`);
+  const style = styleParts.length ? ` style="${styleParts.join(';')}"` : '';
+  const titleStyle = m.text ? ` style="color:${esc(m.text)}"` : '';
+  const descStyle = m.subtitle ? ` style="color:${esc(m.subtitle)}"` : '';
+  const title = LANG==='bn' ? (m.titleBn||m.titleEn) : (m.titleEn||m.titleBn);
+  const desc = LANG==='bn' ? (m.descBn||m.descEn) : (m.descEn||m.descBn);
+  // Visual content (icon/title/colour) is fully separate from behaviour — the
+  // data-action never changes even if everything else is customized (item 8).
+  return `<div class="home-tile" data-action="${esc(m.action)}"${style}>${iconHTML}<div class="label"${titleStyle}>${esc(title)}</div><div class="desc"${descStyle}>${esc(desc)}</div></div>`;
+}
+let SETTINGS = defaultSettings();
+function AT(key){
+  const v = SETTINGS && SETTINGS[key];
+  if(v && v[LANG]) return v[LANG];
+  return T(key);
+}
+async function loadSettings(){
+  const found = getAll('__settings__').find(s=>s.id==='app');
+  if(found) SETTINGS = Object.assign(defaultSettings(), found);
+}
+async function saveSettings(patch){
+  SETTINGS = Object.assign({}, SETTINGS, patch);
+  await upsertDoc('__settings__', 'app', SETTINGS);
+  render();
+}
+
+async function initCapabilities(){
+  // AI summaries: only available inside Claude's own Artifact preview. On GitHub Pages
+  // this stays null and buildAISummary() below falls back to a plain organized summary
+  // (still useful, just not LLM-polished) — see item 5 in the notes.
+  try{ sampleFn = (typeof claude !== 'undefined') ? await claude.use('sample') : null; }catch(e){ sampleFn = null; }
+
+  if(backendConfigured()){
+    try{
+      dbc = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+      DB_READY = true;
+      await seedIfNeeded();
+      await initialFetch();
+      watchAll();
+      await loadSettings();
+      connState.pendingCount = (await idbGetAll('pending')).length;
+      if(connState.pendingCount) flushOfflineQueue(); else { setConn(navigator.onLine?'online':'offline'); touchSync(); }
+    }catch(e){ console.error('Supabase init failed', e); dbc=null; DB_READY=false; seedLocalFallback(); await loadSettings(); }
+  } else {
+    // No backend configured yet — falls back to localStorage so at least a single
+    // device/browser keeps its data across refresh. Multi-device sync needs Supabase.
+    dbc = null; DB_READY = false;
+    seedLocalFallback();
+    await loadSettings();
+  }
+  render();
+}
+
+async function refreshFromServer(){
+  if(!dbc){ render(); return; }
+  state.refreshing = true; render();
+  try{ await initialFetch(); await loadSettings(); touchSync(); setConn('online'); }
+  catch(e){ console.error('Manual refresh failed', e); }
+  state.refreshing = false; render();
+}
+async function initialFetch(){
+  try{
+    const { data, error } = await dbc.from('docs').select('collection,id,data');
+    if(error) throw error;
+    COLLECTIONS.concat(['__settings__']).forEach(c=>LOCAL_CACHE[c]=[]);
+    (data||[]).forEach(row=>{
+      if(!LOCAL_CACHE[row.collection]) LOCAL_CACHE[row.collection]=[];
+      LOCAL_CACHE[row.collection].push(Object.assign({id:row.id}, row.data));
+    });
+  }catch(e){ console.error('initial fetch failed', e); }
+}
+
+async function seedIfNeeded(){
+  try{
+    const {data} = await dbc.from('docs').select('id').eq('collection','__meta__').eq('id','seeded').maybeSingle();
+    if(data) return;
+  }catch(e){}
+  const doctors = seedDoctorsData();
+  const users = seedUsersData();
+  try{
+    for(const d of doctors) await dbc.from('docs').upsert({collection:'doctors', id:d.id, data:d});
+    for(const u of users) await dbc.from('docs').upsert({collection:'users', id:u.id, data:u});
+    await dbc.from('docs').upsert({collection:'__meta__', id:'seeded', data:{seeded:true, at:nowISO()}});
+  }catch(e){ /* ignore, non-fatal */ }
+}
+
+function seedDoctorsData(){
+  return [
+    {id:'doc_ayesha', name:'Dr. Ayesha Rahman', nameBn:'ডা. আয়েশা রহমান', specialty:'General Physician', specialtyBn:'জেনারেল ফিজিশিয়ান', room:'Room 1', hoursStart:'09:00', hoursEnd:'17:00', avgConsultMin:10, status:'available', tokenPrefix:'A', tokenStart:1, tokenDigits:2, dailyLimit:40},
+    {id:'doc_karim', name:'Dr. Karim Hasan', nameBn:'ডা. করিম হাসান', specialty:'Internal Medicine', specialtyBn:'ইন্টারনাল মেডিসিন', room:'Room 2', hoursStart:'10:00', hoursEnd:'18:00', avgConsultMin:12, status:'available', tokenPrefix:'B', tokenStart:1, tokenDigits:2, dailyLimit:40},
+  ];
+}
+function seedUsersData(){
+  return [
+    {id:'u_reception', username:'reception', pin:'1234', role:'reception', name:'Reception Desk'},
+    {id:'u_ayesha', username:'dr.ayesha', pin:'1234', role:'doctor', doctorId:'doc_ayesha', name:'Dr. Ayesha Rahman'},
+    {id:'u_karim', username:'dr.karim', pin:'1234', role:'doctor', doctorId:'doc_karim', name:'Dr. Karim Hasan'},
+    {id:'u_admin', username:'admin', pin:'1234', role:'admin', name:'Clinic Admin'},
+  ];
+}
+function seedLocalFallback(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('clinic_local_data')||'null');
+    if(saved){ Object.assign(LOCAL, saved); return; }
+  }catch(e){}
+  LOCAL.doctors = seedDoctorsData();
+  LOCAL.users = seedUsersData();
+  LOCAL.queue = [
+    {id:'q1', token:'A-01', patientId:'p1', patientName:'Rahim Uddin', doctorId:'doc_ayesha', status:'waiting', priority:'normal', priorityReason:'', isAppointment:false, createdAt: nowISO()},
+    {id:'q2', token:'A-02', patientId:'p2', patientName:'Fatema Begum', doctorId:'doc_ayesha', status:'waiting', priority:'elderly', priorityReason:'Elderly patient (70+)', isAppointment:false, createdAt: nowISO()},
+  ];
+  persistLocalFallback();
+}
+function persistLocalFallback(){ try{ localStorage.setItem('clinic_local_data', JSON.stringify(LOCAL)); }catch(e){} }
+
+/* ---- generic CRUD over the single `docs` table, with idempotent upsert ---- */
+function col(name){ return { _name:name }; }
+
+// `explicitId`: pass a stable, client-generated id to make retries/double-taps
+// idempotent (a second call with the same id overwrites the same row instead of
+// creating a duplicate). If omitted, a fresh id is generated.
+async function addDoc(name, data, explicitId){
+  const id = explicitId || uid();
+  const doc = Object.assign({id}, data);
+  await upsertDoc(name, id, doc);
+  return doc;
+}
+async function upsertDoc(name, id, doc){
+  relayBroadcastIfPaired(name, id, doc);
+  // optimistic local update so the UI (and idempotent re-submits) feel instant
+  if(dbc){
+    const arr = LOCAL_CACHE[name] = LOCAL_CACHE[name]||[];
+    const i = arr.findIndex(x=>x.id===id);
+    if(i>-1) arr[i]=Object.assign({},arr[i],doc); else arr.push(doc);
+    try{
+      const { error } = await dbc.from('docs').upsert({collection:name, id, data:doc});
+      if(error) throw error;
+      touchSync(); if(connState.status!=='online') setConn('online');
+    }catch(e){
+      await queueOffline({kind:'upsert', collection:name, id, data:doc});
+      setConn(navigator.onLine ? 'reconnecting' : 'offline');
+    }
+  } else {
+    LOCAL[name] = LOCAL[name]||[];
+    const i = LOCAL[name].findIndex(x=>x.id===id);
+    if(i>-1) LOCAL[name][i]=doc; else LOCAL[name].push(doc);
+    persistLocalFallback();
+  }
+  render();
+}
+async function updateDoc(name, id, patch){
+  const arr = getAll(name);
+  const existing = arr.find(x=>x.id===id) || {id};
+  const merged = Object.assign({}, existing, patch);
+  await upsertDoc(name, id, merged);
+}
+async function deleteDocById(name, id){
+  if(dbc){
+    LOCAL_CACHE[name] = (LOCAL_CACHE[name]||[]).filter(x=>x.id!==id);
+    try{
+      const { error } = await dbc.from('docs').delete().eq('collection',name).eq('id',id);
+      if(error) throw error;
+      touchSync();
+    }catch(e){ await queueOffline({kind:'delete', collection:name, id}); setConn(navigator.onLine?'reconnecting':'offline'); }
+  } else {
+    LOCAL[name] = (LOCAL[name]||[]).filter(x=>x.id!==id);
+    persistLocalFallback();
+  }
+  render();
+}
+function getAll(name){
+  if(dbc) return LOCAL_CACHE[name] || [];
+  return LOCAL[name] || [];
+}
+
+function watchAll(){
+  if(!dbc) return;
+  try{
+    realtimeChannel = dbc.channel('docs-changes')
+      .on('postgres_changes', {event:'*', schema:'public', table:'docs'}, payload=>{
+        const row = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+        if(!row) return;
+        const { collection, id } = row;
+        if(!LOCAL_CACHE[collection]) LOCAL_CACHE[collection]=[];
+        if(payload.eventType==='DELETE'){
+          LOCAL_CACHE[collection] = LOCAL_CACHE[collection].filter(x=>x.id!==id);
+        } else {
+          const doc = Object.assign({id}, payload.new.data);
+          const i = LOCAL_CACHE[collection].findIndex(x=>x.id===id);
+          if(i>-1) LOCAL_CACHE[collection][i]=doc; else LOCAL_CACHE[collection].push(doc);
+          if(collection==='__settings__' && id==='app'){ SETTINGS = Object.assign(defaultSettings(), doc); }
+        }
+        touchSync();
+        onRealtimeChange(collection, payload);
+        render();
+      })
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED'){ setConn('online'); touchSync(); flushOfflineQueue(); }
+        else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){ setConn('reconnecting'); setTimeout(()=>{ if(dbc) watchAll(); }, 4000); }
+        else if(status==='CLOSED'){ setConn(navigator.onLine?'reconnecting':'offline'); }
+      });
+  }catch(e){ console.error('realtime subscribe failed', e); }
+}
+async function log(action, detail){
+  const actor = state.session ? state.session.name : 'System';
+  const role = state.session ? state.session.role : 'system';
+  await addDoc('activityLog', {actorName:actor, actorRole:role, action, detail, timestamp: nowISO()});
+}
+
+/* ============================== APP STATE ============================== */
+const state = {
+  view: 'home',
+  session: null, // {role, name, doctorId?}
+  precheckDraft: null,
+  activeTokenId: localStorage.getItem('clinic_active_token') || null,
+  trackInput: '',
+  modal: null,
+  doctorTab: 'queue',
+  adminTab: 'analytics',
+  aiAssistantAnswer: '',
+  aiAssistantLoading: false,
+  transStore: {}, // id -> translated text
+  bookingDraft: {},
+  quickDraft: {},
+  submitting: false,
+  yourTurnFlash: null,
+  recoveryCodeInput: '',
+  permDenied: null,
+  localRelay: {role:null, status:'idle', offerCode:'', answerCode:'', receivedCode:'', tokenId:'', received:null},
+  refreshing: false,
+};
+
+function go(view, extra){ state.view = view; if(extra) Object.assign(state, extra); render(); window.scrollTo(0,0); }
+
+/* ============================== DOMAIN LOGIC ============================== */
+function urgentCheck(vitals, symptomsText){
+  const reasons = [];
+  const temp = parseFloat(vitals.temp);
+  const hr = parseFloat(vitals.hr);
+  const spo2 = parseFloat(vitals.spo2);
+  const bp = (vitals.bp||'').split('/').map(x=>parseFloat(x));
+  if(!isNaN(temp) && temp>=103) reasons.push('very high temperature');
+  if(!isNaN(spo2) && spo2>0 && spo2<92) reasons.push('low oxygen level');
+  if(!isNaN(hr) && (hr>=140 || (hr>0 && hr<=40))) reasons.push('abnormal heart rate');
+  if(bp.length===2 && !isNaN(bp[0]) && !isNaN(bp[1])){
+    if(bp[0]>=180 || bp[0]<=85) reasons.push('abnormal blood pressure');
+  }
+  const redFlags = ['chest pain','difficulty breathing','can\'t breathe','severe bleeding','unconscious','seizure','stroke','severe pain','can not breathe','breathless','faint'];
+  const txt = (symptomsText||'').toLowerCase();
+  redFlags.forEach(f=>{ if(txt.includes(f)) reasons.push('symptom: '+f); });
+  return {urgent: reasons.length>0, reasons};
+}
+
+function computeQueueForDoctor(doctorId){
+  return getAll('queue').filter(q=>q.doctorId===doctorId && ['waiting','called','paused'].includes(q.status))
+    .sort((a,b)=>{
+      const pw = {emergency:0, disability:1, pregnant:1, elderly:1, child:1, other:2, normal:3};
+      const pa = pw[a.priority] ?? 3, pb = pw[b.priority] ?? 3;
+      if(pa!==pb) return pa-pb;
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+}
+function positionInQueue(entry){
+  const q = computeQueueForDoctor(entry.doctorId);
+  const idx = q.findIndex(x=>x.id===entry.id);
+  return {position: idx, ahead: Math.max(idx,0), total:q.length};
+}
+function etaFor(entry){
+  const doctor = getAll('doctors').find(d=>d.id===entry.doctorId) || {avgConsultMin:12};
+  const {ahead} = positionInQueue(entry);
+  const low = ahead*doctor.avgConsultMin;
+  const high = low + doctor.avgConsultMin + 10;
+  return {low, high};
+}
+function todaysTokensForDoctor(doctorId){
+  return getAll('queue').filter(q=>q.doctorId===doctorId && (q.createdAt||'').slice(0,10)===todayKey());
+}
+function genToken(doctorId){
+  const doctor = getAll('doctors').find(d=>d.id===doctorId) || {};
+  const prefix = doctor.tokenPrefix || doctor.name?.replace('Dr. ','').charAt(0).toUpperCase() || 'X';
+  const start = Number.isFinite(doctor.tokenStart) ? doctor.tokenStart : 1;
+  const digits = doctor.tokenDigits || 2;
+  const n = todaysTokensForDoctor(doctorId).length + start;
+  return prefix + '-' + String(n).padStart(digits,'0');
+}
+function dailyLimitReached(doctorId){
+  const doctor = getAll('doctors').find(d=>d.id===doctorId) || {};
+  if(!doctor.dailyLimit) return false;
+  return todaysTokensForDoctor(doctorId).length >= doctor.dailyLimit;
+}
+
+/* ---- notifications & "your turn" watcher (item 10/11) ---- */
+let lastKnownStatus = {}; // queueEntryId -> status, to detect transitions
+let notifPermAsked = false;
+async function ensureNotifPermission(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission==='granted') return true;
+  if(Notification.permission==='denied') return false;
+  if(notifPermAsked) return false;
+  notifPermAsked = true;
+  try{ const p = await Notification.requestPermission(); return p==='granted'; }catch(e){ return false; }
+}
+function vibrateShort(){ try{ if(navigator.vibrate) navigator.vibrate(2500); }catch(e){} }
+function fireNotification(title, body){
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      new Notification(title, {body, tag:'clinic-queue'});
+    }
+  }catch(e){}
+}
+function onRealtimeChange(collection){
+  if(collection!=='queue') return;
+  checkOwnTokenNotifications();
+}
+function checkOwnTokenNotifications(){
+  if(!state.activeTokenId) return;
+  const entry = getAll('queue').find(q=>q.id===state.activeTokenId);
+  if(!entry) return;
+  const prev = lastKnownStatus[entry.id];
+  lastKnownStatus[entry.id] = entry.status;
+  const threshold = SETTINGS.nearTurnThreshold || CONFIG.NEAR_TURN_DEFAULT;
+  const stopStatuses = ['in-consult','completed','noshow','cancelled','skipped'];
+  if(stopStatuses.includes(entry.status)) return; // no more notifications once consultation starts/ends
+  if(entry.status==='called' && prev!=='called'){
+    vibrateShort();
+    fireNotification(LANG==='bn' ? 'আপনার পালা!' : 'YOUR TURN', (LANG==='bn'?'টোকেন ':'Token ') + entry.token);
+    state.yourTurnFlash = entry.token; render();
+    return;
+  }
+  if(['waiting','paused'].includes(entry.status)){
+    const {ahead} = positionInQueue(entry);
+    if(ahead<=threshold && ahead>0 && lastKnownStatus['__ahead_'+entry.id] !== ahead){
+      lastKnownStatus['__ahead_'+entry.id] = ahead;
+      fireNotification(LANG==='bn'?'সিরিয়াল কাছাকাছি':'Almost your turn', T('almostTurn',{n:ahead}));
+    }
+  }
+}
+
+async function buildAISummary(pc, patientName){
+  const missing = [];
+  if(!pc.symptoms) missing.push('main complaint / symptoms');
+  if(!pc.durationDays) missing.push('symptom duration');
+  if(!pc.vitals.temp && !pc.vitals.bp && !pc.vitals.hr && !pc.vitals.spo2) missing.push('vitals');
+  if(!pc.meds) missing.push('current medications (or confirmation of none)');
+  if(!pc.allergies) missing.push('allergies (or confirmation of none)');
+  const urgent = urgentCheck(pc.vitals, pc.symptoms + ' ' + (pc.reason||''));
+  const base = `Patient: ${patientName}
+Main complaint: ${pc.symptoms || '—'}
+Duration: ${pc.durationDays || '—'} day(s)
+Temperature: ${pc.vitals.temp ? pc.vitals.temp+'°F' : 'not provided'}
+Blood pressure: ${pc.vitals.bp || 'not provided'}
+Heart rate: ${pc.vitals.hr ? pc.vitals.hr+' bpm' : 'not provided'}
+Oxygen level: ${pc.vitals.spo2 ? pc.vitals.spo2+'%' : 'not provided'}
+Previous reports: ${pc.reportCount || 0} uploaded
+Current medication: ${pc.meds || 'None reported'}
+Allergy: ${pc.allergies || 'None reported'}
+Reason for visit: ${pc.reason || '—'}
+Missing information: ${missing.length ? missing.join(', ') : 'none noted'}
+Potentially urgent (flagged for doctor review, not a diagnosis): ${urgent.urgent ? urgent.reasons.join(', ') : 'none flagged'}`;
+  if(!sampleFn) return base;
+  try{
+    const prompt = `You organize patient pre-check intake into a short, calm, structured summary for a doctor. Do NOT diagnose, do NOT suggest treatment, do NOT speculate beyond what was given. Just organize the facts clearly in under 90 words, plain text, no markdown.
+
+Patient data:
+${base}`;
+    const res = await sampleFn(prompt, {modelTier:'quick'});
+    return (res && res.text) ? res.text.trim() : base;
+  }catch(e){ return base; }
+}
+
+/* ============================== RENDER: SHELL ============================== */
+function render(){
+  const app = document.getElementById('app');
+  document.documentElement.lang = LANG;
+  applyThemeVars();
+  // Guard against ANY re-render (a background realtime update, a permission
+  // toast timing out, etc.) wiping form fields the patient is mid-typing —
+  // capture the current step's DOM values into state first, every time.
+  if(state.view==='precheck' && state.precheckDraft) collectStepInputs();
+  if(state.activeTokenId) checkOwnTokenNotifications();
+  app.className = 'app' + (['reception','doctor','admin'].includes(state.session?.role) ? ' wide':'');
+  let body = '';
+  switch(state.view){
+    case 'home': body = viewHome(); break;
+    case 'precheck': body = viewPrecheck(); break;
+    case 'quicktoken': body = viewQuickToken(); break;
+    case 'book': body = viewBook(); break;
+    case 'track': body = viewTrack(); break;
+    case 'tokenResult': body = viewTokenResult(); break;
+    case 'apptResult': body = viewApptResult(); break;
+    case 'stafflogin': body = viewStaffLogin(); break;
+    case 'reception': body = viewReception(); break;
+    case 'doctor': body = viewDoctor(); break;
+    case 'admin': body = viewAdmin(); break;
+    case 'waitingroom': body = viewWaitingRoom(); break;
+    case 'relay': body = viewRelay(); break;
+    default: body = viewHome();
+  }
+  if(state.view==='waitingroom'){ app.innerHTML = body; wireGlobal(); return; }
+  app.innerHTML = topbarHTML() + body + modalHTML() + footerHTML() + yourTurnFlashHTML() + permDeniedToastHTML();
+  wireGlobal();
+}
+
+function topbarHTML(){
+  return `
+  <div class="topbar">
+    <button class="brand" data-action="go-home" aria-label="Home">
+      <div class="brand-mark">${SETTINGS.logoAssetUrl ? `<img src="${esc(SETTINGS.logoAssetUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:11px;">` : esc(SETTINGS.logoEmoji)}</div>
+      <div class="brand-text">
+        <div class="brand-name">${esc(AT('clinicName'))}</div>
+        <div class="brand-sub">${esc(AT('clinicSub'))}</div>
+      </div>
+    </button>
+    <div class="topbar-actions">
+      ${connBadgeHTML()}
+      <div class="lang-toggle">
+        <button data-action="setlang" data-lang="bn" class="${LANG==='bn'?'active':''}">বাংলা</button>
+        <button data-action="setlang" data-lang="en" class="${LANG==='en'?'active':''}">English</button>
+      </div>
+      <button class="chip-btn ${document.body.classList.contains('big-text')?'on':''}" data-action="toggle-bigtext" title="${esc(T('large'))}">A+</button>
+      <button class="chip-btn ${document.body.classList.contains('high-contrast')?'on':''}" data-action="toggle-contrast" title="${esc(T('contrast'))}">◐</button>
+      ${state.session ? `<button class="chip-btn" data-action="logout">${esc(T('logout'))}</button>` : `<button class="chip-btn" data-action="go-stafflogin">${esc(T('staffLogin'))}</button>`}
+    </div>
+  </div>`;
+}
+function demoModeBannerHTML(){
+  if(backendConfigured() || !state.session) return '';
+  return `<div class="alert alert-urgent" style="margin-bottom:14px;">
+    ⚠️ ${LANG==='bn'
+      ? 'ডেমো মোড: এই ব্রাউজারেই তথ্য সংরক্ষিত হচ্ছে (Supabase যুক্ত হয়নি)। অন্য ডিভাইস/ব্রাউজারে দেখা যাবে না যতক্ষণ না আসল ব্যাকএন্ড যুক্ত করা হয়।'
+      : "Demo mode: data is only saved in this browser (Supabase isn't connected yet). Other tabs of this same browser will sync, but a different phone/computer won't until CONFIG.SUPABASE_URL / SUPABASE_ANON_KEY at the top of index.html are set to your real project values."}
+  </div>`;
+}
+function connBadgeHTML(){
+  if(!backendConfigured()) return ''; // single-device demo mode — connection state isn't meaningful
+  const s = connState.status;
+  const cls = s==='online' ? 'conn-online' : s==='offline' ? 'conn-offline' : 'conn-reconnecting';
+  const label = s==='online' ? (LANG==='bn'?'অনলাইন':'Online') : s==='offline' ? (LANG==='bn'?'অফলাইন':'Offline') : (LANG==='bn'?'পুনঃসংযোগ হচ্ছে':'Reconnecting');
+  const syncNote = connState.lastSync ? (LANG==='bn'?'শেষ সিঙ্ক: ':'Last synchronized: ') + fmtTime(connState.lastSync) : '';
+  return `<span class="conn-badge ${cls}" title="${esc(syncNote)}"><span class="conn-dot ${s!=='online'?'pulse':''}"></span>${esc(label)}${connState.pendingCount?` (${connState.pendingCount})`:''}</span><button class="icon-btn" data-action="refresh-now" title="${LANG==='bn'?'রিফ্রেশ':'Refresh'}" ${state.refreshing?'disabled':''}>${state.refreshing?'⏳':'🔄'}</button>`;
+}
+function permDeniedToastHTML(){
+  if(!state.permDenied) return '';
+  return `<div class="perm-toast">🚫 ${esc(state.permDenied)}</div>`;
+}
+function yourTurnFlashHTML(){
+  if(!state.yourTurnFlash) return '';
+  return `<div class="your-turn-flash" data-action="dismiss-turn-flash">
+    <div style="font-size:15px;letter-spacing:.1em;opacity:.8;">${LANG==='bn'?'আপনার পালা':'YOUR TURN'}</div>
+    <div class="big">${esc(state.yourTurnFlash)}</div>
+    <button class="btn btn-secondary" data-action="dismiss-turn-flash">${LANG==='bn'?'ঠিক আছে':'OK'}</button>
+  </div>`;
+}
+
+function footerHTML(){
+  return `<div class="footer-note">${LANG==='bn' ? 'এটি একটি প্রদর্শনী (ডেমো) সিস্টেম। সকল রোগীর তথ্য নমুনা ডেটা।' : 'This is a demonstration system. All patient data shown is sample data.'}</div>`;
+}
+
+function modalHTML(){
+  if(!state.modal) return '';
+  const renderers = { walkin:renderWalkinModal, priority:renderPriorityModal, complete:renderCompleteModal, doctor:renderDoctorModal, user:renderUserModal };
+  const fn = renderers[state.modal.type];
+  const content = fn ? fn() : '';
+  return `<div class="modal-bg" data-action="close-modal">
+    <div class="modal" data-stop="1">${content}</div>
+  </div>`;
+}
+
+/* ============================== VIEW: HOME ============================== */
+function viewHome(){
+  return `
+  <div class="hero">
+    <h1>${esc(AT('heroTitle'))}</h1>
+    <p>${esc(AT('heroSub'))}</p>
+  </div>
+  <div class="home-grid">
+    ${renderHomeTile('bookAppt')}
+    ${renderHomeTile('getToken')}
+    ${renderHomeTile('preCheck')}
+    ${renderHomeTile('trackQueue')}
+  </div>
+  <div style="text-align:center;margin:-6px 0 8px;">
+    <button class="btn btn-ghost" data-action="go-waitingroom">📺 ${LANG==='bn'?'ওয়েটিং রুম ডিসপ্লে':'Waiting room display'}</button>
+    <button class="btn btn-ghost" data-action="go-relay">📶 ${LANG==='bn'?'অফলাইন কোড দিয়ে দেখুন':'View status via offline code'}</button>
+  </div>
+  <div class="section-title">${LANG==='bn'?'ডাক্তারবৃন্দ':'Our doctors'}</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:0;">
+    ${getAll('doctors').map((d,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 2px;${i>0?'border-top:1px solid var(--border);':''}">
+        <div class="qtoken" style="border-radius:50%;">👨‍⚕️</div>
+        <div class="qmain">
+          <div class="qname">${esc(LANG==='bn'?d.nameBn:d.name)}</div>
+          <div class="qmeta">${esc(LANG==='bn'?d.specialtyBn:d.specialty)} · ${esc(d.room)}</div>
+        </div>
+        <span class="badge ${d.status==='available'?'badge-done':d.status==='busy'?'badge-called':'badge-missed'}">${esc(T(d.status==='available'?'available':d.status==='busy'?'busy':'offDuty'))}</span>
+      </div>`).join('')}
+  </div>
+  `;
+}
+
+/* ============================== VIEW: PRE-CHECK WIZARD ============================== */
+function ensureDraft(){
+  if(!state.precheckDraft){
+    state.precheckDraft = {
+      step: 0, name:'', phone:'', age:'', gender:'',
+      doctorId: getAll('doctors')[0]?.id || '',
+      symptoms:'', durationDays:'',
+      vitals:{temp:'',bp:'',hr:'',spo2:'',weight:''},
+      meds:'', allergies:'', conditions:'', reason:'',
+      files:[], consent:false,
+    };
+  }
+  return state.precheckDraft;
+}
+function viewPrecheck(){
+  const d = ensureDraft();
+  const steps = [T('step1'),T('step2'),T('step3'),T('step4')];
+  let content = '';
+  if(d.step===0){
+    content = `
+    <div class="field"><label>${esc(T('fullName'))} *</label><input type="text" id="f_name" value="${esc(d.name)}"></div>
+    <div class="grid2">
+      <div class="field"><label>${esc(T('phone'))} *</label><input type="tel" id="f_phone" value="${esc(d.phone)}"></div>
+      <div class="field"><label>${esc(T('age'))}</label><input type="number" id="f_age" value="${esc(d.age)}"></div>
+    </div>
+    <div class="field"><label>${esc(T('chooseDoctor'))}</label>
+      <select id="f_doctor">${getAll('doctors').map(dd=>`<option value="${dd.id}" ${dd.id===d.doctorId?'selected':''}>${esc(LANG==='bn'?dd.nameBn:dd.name)} — ${esc(LANG==='bn'?dd.specialtyBn:dd.specialty)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>${esc(T('symptoms'))} *</label>
+      <textarea id="f_symptoms" placeholder="${esc(T('symptomsHint'))}">${esc(d.symptoms)}</textarea>
+      <button type="button" class="voice-btn" data-action="voice-read" data-text="${esc(T('symptomsHint'))}">🔊 ${esc(T('voiceRead'))}</button>
+    </div>
+    <div class="field"><label>${esc(T('duration'))}</label><input type="number" id="f_duration" value="${esc(d.durationDays)}" placeholder="${esc(T('days'))}"></div>
+    <div class="field"><label>${esc(T('reasonVisit'))}</label><input type="text" id="f_reason" value="${esc(d.reason)}"></div>
+    `;
+  } else if(d.step===1){
+    content = `
+    <p class="section-title" style="margin-top:0">${esc(T('vitals'))}</p>
+    <div class="grid2">
+      <div class="field"><label>${esc(T('temp'))}</label><input type="number" step="0.1" id="v_temp" value="${esc(d.vitals.temp)}"></div>
+      <div class="field"><label>${esc(T('bp'))}</label><input type="text" placeholder="120/80" id="v_bp" value="${esc(d.vitals.bp)}"></div>
+      <div class="field"><label>${esc(T('hr'))}</label><input type="number" id="v_hr" value="${esc(d.vitals.hr)}"></div>
+      <div class="field"><label>${esc(T('spo2'))}</label><input type="number" id="v_spo2" value="${esc(d.vitals.spo2)}"></div>
+      <div class="field"><label>${esc(T('weight'))}</label><input type="number" id="v_weight" value="${esc(d.vitals.weight)}"></div>
+    </div>
+    <div class="field"><label>${esc(T('uploads'))}</label>
+      <div class="upload-box" data-action="pick-file">
+        <div style="font-size:24px">📎</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;">${esc(T('uploadHint'))}</div>
+      </div>
+      <input type="file" id="f_file" multiple style="display:none;" accept="image/*,.pdf">
+      <div id="file-list">${d.files.map((f,i)=>`<div class="file-row"><span>📄 ${esc(f.name)}</span><button class="small-btn danger" data-action="rm-file" data-i="${i}">✕</button></div>`).join('')}</div>
+    </div>
+    `;
+  } else if(d.step===2){
+    content = `
+    <div class="field"><label>${esc(T('meds'))}</label><textarea id="f_meds">${esc(d.meds)}</textarea></div>
+    <div class="field"><label>${esc(T('allergies'))}</label><textarea id="f_allergies">${esc(d.allergies)}</textarea></div>
+    <div class="field"><label>${esc(T('conditions'))}</label><textarea id="f_conditions">${esc(d.conditions)}</textarea></div>
+    `;
+  } else if(d.step===3){
+    const doctor = getAll('doctors').find(x=>x.id===d.doctorId);
+    const uc = urgentCheck(d.vitals, d.symptoms);
+    content = `
+    <div class="card" style="margin-bottom:14px;">
+      <div class="qname" style="margin-bottom:8px;">${esc(T('reviewTitle'))}</div>
+      <div class="qmeta">${esc(d.name)} · ${esc(d.phone)} · ${LANG==='bn'?'বয়স':'Age'} ${esc(d.age||'—')}</div>
+      <div class="qmeta">${esc(T('chooseDoctor'))}: ${esc(doctor ? (LANG==='bn'?doctor.nameBn:doctor.name) : '—')}</div>
+      <div class="qmeta">${esc(T('symptoms'))}: ${esc(d.symptoms||'—')} (${esc(d.durationDays||'—')} ${esc(T('days'))})</div>
+      <div class="qmeta">${LANG==='bn'?'ফাইল':'Files'}: ${d.files.length}</div>
+    </div>
+    ${uc.urgent ? `<div class="alert alert-urgent" style="margin-bottom:14px;">⚠️ ${esc(T('urgentBanner'))}</div>` : ''}
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--text-dim);">
+      <input type="checkbox" id="f_consent" ${d.consent?'checked':''} style="margin-top:3px;">
+      <span>${esc(T('consentBody'))}</span>
+    </label>
+    `;
+  }
+  return `
+  <div class="card">
+    <div class="steps">${steps.map((s,i)=>`<div class="${i<=d.step?'done':''}"></div>`).join('')}</div>
+    <div class="section-title" style="margin-top:0;">${esc(steps[d.step])}</div>
+    ${content}
+    <div style="display:flex;gap:10px;margin-top:22px;">
+      ${d.step>0 ? `<button class="btn btn-secondary" data-action="pc-back">${esc(T('back'))}</button>` : `<button class="btn btn-secondary" data-action="go-home">${esc(T('back'))}</button>`}
+      ${d.step<3 ? `<button class="btn btn-primary btn-block" data-action="pc-next">${esc(T('next'))}</button>` : `<button class="btn btn-primary btn-block" data-action="pc-submit" ${!d.consent?'disabled':''}>${esc(T('submit'))}</button>`}
+    </div>
+  </div>`;
+}
+
+function collectStepInputs(){
+  const d = state.precheckDraft;
+  const g = id => document.getElementById(id);
+  if(d.step===0){
+    if(g('f_name')) d.name=g('f_name').value;
+    if(g('f_phone')) d.phone=g('f_phone').value;
+    if(g('f_age')) d.age=g('f_age').value;
+    if(g('f_doctor')) d.doctorId=g('f_doctor').value;
+    if(g('f_symptoms')) d.symptoms=g('f_symptoms').value;
+    if(g('f_duration')) d.durationDays=g('f_duration').value;
+    if(g('f_reason')) d.reason=g('f_reason').value;
+  } else if(d.step===1){
+    if(g('v_temp')) d.vitals.temp=g('v_temp').value;
+    if(g('v_bp')) d.vitals.bp=g('v_bp').value;
+    if(g('v_hr')) d.vitals.hr=g('v_hr').value;
+    if(g('v_spo2')) d.vitals.spo2=g('v_spo2').value;
+    if(g('v_weight')) d.vitals.weight=g('v_weight').value;
+  } else if(d.step===2){
+    if(g('f_meds')) d.meds=g('f_meds').value;
+    if(g('f_allergies')) d.allergies=g('f_allergies').value;
+    if(g('f_conditions')) d.conditions=g('f_conditions').value;
+  } else if(d.step===3){
+    if(g('f_consent')) d.consent=g('f_consent').checked;
+  }
+}
+
+/* Token creation is deliberately NOT run through the generic offline queue:
+   item 13 requires that if we can't confirm a new token with the server, we
+   say "Token not confirmed" rather than show a token that might collide with
+   one another offline device also generates for the same doctor. Status
+   changes on an *existing* token (call/complete/pause/etc.) are safe to queue
+   offline since they don't need a fresh serial number. */
+async function createQueueToken(doctorId, payload, requestId){
+  if(dailyLimitReached(doctorId)) return {ok:false, reason:'limit'};
+  if(dbc && !navigator.onLine) return {ok:false, reason:'offline'};
+  const token = genToken(doctorId);
+  const doc = Object.assign({id:requestId, token, doctorId, createdAt: nowISO()}, payload);
+  if(dbc){
+    try{
+      const { error } = await dbc.from('docs').upsert({collection:'queue', id:requestId, data:doc});
+      if(error) throw error;
+      LOCAL_CACHE.queue = LOCAL_CACHE.queue||[];
+      const i = LOCAL_CACHE.queue.findIndex(x=>x.id===requestId);
+      if(i>-1) LOCAL_CACHE.queue[i]=doc; else LOCAL_CACHE.queue.push(doc);
+      touchSync(); setConn('online'); render();
+      return {ok:true, doc};
+    }catch(e){ return {ok:false, reason:'offline'}; }
+  } else {
+    LOCAL.queue = LOCAL.queue||[]; LOCAL.queue.push(doc); persistLocalFallback(); render();
+    return {ok:true, doc};
+  }
+}
+function tokenNotConfirmedMsg(reason){
+  if(reason==='limit') return LANG==='bn' ? 'আজকের জন্য এই ডাক্তারের সিরিয়াল পূর্ণ হয়ে গেছে।' : "Today's patient limit for this doctor has been reached.";
+  return LANG==='bn' ? 'টোকেন নিশ্চিত হয়নি — ইন্টারনেট সংযোগ নেই। সংযোগ ফিরলে আবার চেষ্টা করুন।' : 'Token not confirmed — no internet connection. Please try again once connected.';
+}
+
+async function submitPrecheck(){
+  if(state.submitting) return; // guards against double-tap creating two tokens
+  const d = state.precheckDraft;
+  if(!d.name || !d.phone || !d.symptoms){ alert(T('required')); d.step=0; render(); return; }
+  if(!d.requestId) d.requestId = uid(); // stable id: retries of this same draft hit the same row
+  state.submitting = true; render();
+  try{
+    const patient = await addDoc('patients', {name:d.name, phone:d.phone, age:d.age, gender:d.gender, createdAt: nowISO()});
+    let reportIds = [];
+    if(assetsCap && d.files.length){
+      for(const f of d.files){
+        try{
+          const res = await assetsCap.upload(f.blob);
+          const rep = await addDoc('reports', {patientId:patient.id, assetId:res.id, filename:f.name, type:'upload', date: todayKey(), uploadedAt: nowISO()});
+          reportIds.push(rep.id);
+        }catch(e){}
+      }
+    }
+    const uc = urgentCheck(d.vitals, d.symptoms);
+    const aiSummary = await buildAISummary({symptoms:d.symptoms, durationDays:d.durationDays, vitals:d.vitals, reportCount:reportIds.length, meds:d.meds, allergies:d.allergies, reason:d.reason}, d.name);
+    const pc = await addDoc('precheck', {
+      patientId:patient.id, symptoms:d.symptoms, durationDays:d.durationDays, vitals:d.vitals,
+      meds:d.meds, allergies:d.allergies, conditions:d.conditions, reason:d.reason,
+      reportIds, aiSummary, urgent:uc.urgent, urgentReason: uc.reasons.join(', '), createdAt: nowISO()
+    });
+    const result = await createQueueToken(d.doctorId, {
+      patientId:patient.id, patientName:d.name, status:'waiting',
+      priority: uc.urgent ? 'emergency':'normal', priorityReason: uc.urgent ? ('Auto-flagged: '+uc.reasons.join(', ')) : '',
+      isAppointment:false, precheckId:pc.id
+    }, d.requestId);
+    if(!result.ok){ alert(tokenNotConfirmedMsg(result.reason)); return; }
+    await log('Pre-check submitted', `${d.name} → token ${result.doc.token}`);
+    localStorage.setItem('clinic_active_token', result.doc.id);
+    state.activeTokenId = result.doc.id;
+    await ensureNotifPermission();
+    state.precheckDraft = null;
+    go('tokenResult', {lastCreatedId:result.doc.id});
+  } finally { state.submitting = false; }
+}
+
+/* ============================== VIEW: QUICK TOKEN (walk-in) ============================== */
+function viewQuickToken(){
+  const d = state.quickDraft;
+  const doctorId = d.doctorId || getAll('doctors')[0]?.id;
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${esc(T('getToken'))}</div>
+    <div class="field"><label>${esc(T('fullName'))} *</label><input type="text" id="q_name" value="${esc(d.name||'')}" oninput="state.quickDraft.name=this.value"></div>
+    <div class="field"><label>${esc(T('phone'))}</label><input type="tel" id="q_phone" value="${esc(d.phone||'')}" oninput="state.quickDraft.phone=this.value"></div>
+    <div class="field"><label>${esc(T('chooseDoctor'))}</label>
+      <select id="q_doctor">${getAll('doctors').map(dd=>`<option value="${dd.id}" ${dd.id===doctorId?'selected':''}>${esc(LANG==='bn'?dd.nameBn:dd.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>${esc(T('reasonVisit'))}</label><input type="text" id="q_reason" value="${esc(d.reason||'')}" oninput="state.quickDraft.reason=this.value"></div>
+    <button class="btn btn-primary btn-block btn-lg" data-action="quick-submit">${esc(T('getToken'))}</button>
+  </div>`;
+}
+async function submitQuick(){
+  if(state.submitting) return;
+  const g = id=>document.getElementById(id);
+  const name = g('q_name').value, phone=g('q_phone').value, doctorId=g('q_doctor').value, reason=g('q_reason').value;
+  if(!name){ alert(T('required')); return; }
+  if(!state.quickDraft.requestId) state.quickDraft.requestId = uid();
+  state.submitting = true; render();
+  try{
+    const patient = await addDoc('patients', {name, phone, createdAt: nowISO()});
+    const result = await createQueueToken(doctorId, {patientId:patient.id, patientName:name, status:'waiting', priority:'normal', priorityReason:'', isAppointment:false, reason}, state.quickDraft.requestId);
+    if(!result.ok){ alert(tokenNotConfirmedMsg(result.reason)); return; }
+    await log('Walk-in registered', `${name} → token ${result.doc.token}`);
+    localStorage.setItem('clinic_active_token', result.doc.id);
+    state.activeTokenId = result.doc.id;
+    await ensureNotifPermission();
+    state.quickDraft = {};
+    go('tokenResult', {lastCreatedId:result.doc.id});
+  } finally { state.submitting = false; }
+}
+
+/* ============================== VIEW: BOOK APPOINTMENT ============================== */
+function viewBook(){
+  const d = state.bookingDraft;
+  const doctorId = d.doctorId || getAll('doctors')[0]?.id;
+  const slots = ['09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30'];
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${esc(T('bookAppt'))}</div>
+    <div class="field"><label>${esc(T('fullName'))} *</label><input type="text" id="b_name" value="${esc(d.name||'')}" oninput="state.bookingDraft.name=this.value"></div>
+    <div class="field"><label>${esc(T('phone'))} *</label><input type="tel" id="b_phone" value="${esc(d.phone||'')}" oninput="state.bookingDraft.phone=this.value"></div>
+    <div class="field"><label>${esc(T('chooseDoctor'))}</label>
+      <select id="b_doctor">${getAll('doctors').map(dd=>`<option value="${dd.id}" ${dd.id===doctorId?'selected':''}>${esc(LANG==='bn'?dd.nameBn:dd.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>${esc(T('date'))}</label><input type="date" id="b_date" value="${esc(d.date||todayKey())}" min="${todayKey()}"></div>
+    <div class="field"><label>${esc(T('time'))}</label>
+      <div class="pill-select" id="b_slots">${slots.map(s=>`<button type="button" data-slot="${s}" class="${d.time===s?'sel':''}">${s}</button>`).join('')}</div>
+    </div>
+    <button class="btn btn-primary btn-block btn-lg" data-action="book-submit">${esc(T('bookAppt'))}</button>
+  </div>`;
+}
+async function submitBooking(){
+  const g=id=>document.getElementById(id);
+  const name=g('b_name').value, phone=g('b_phone').value, doctorId=g('b_doctor').value, date=g('b_date').value;
+  const time = state.bookingDraft.time;
+  if(!name || !phone || !time){ alert(T('required')); return; }
+  const patient = await addDoc('patients', {name, phone, createdAt: nowISO()});
+  const appt = await addDoc('appointments', {patientId:patient.id, patientName:name, doctorId, date, time, status:'booked', createdAt: nowISO()});
+  await log('Appointment booked', `${name} with doctor on ${date} ${time}`);
+  state.bookingDraft = {};
+  go('apptResult', {lastAppt: appt});
+}
+
+/* ============================== VIEW: TOKEN RESULT / TRACK ============================== */
+function findQueueEntry(id){ return getAll('queue').find(q=>q.id===id); }
+
+function queueLiveBlock(entry){
+  const doctor = getAll('doctors').find(d=>d.id===entry.doctorId) || {};
+  const {ahead} = positionInQueue(entry);
+  const eta = etaFor(entry);
+  const nowServing = computeQueueForDoctor(entry.doctorId).find(q=>q.status==='called');
+  let statusBadge = 'badge-waiting', statusLabel = T('waiting');
+  if(entry.status==='called'){statusBadge='badge-called'; statusLabel=T('called');}
+  if(entry.status==='in-consult'){statusBadge='badge-progress'; statusLabel=T('inConsult');}
+  if(entry.status==='completed'){statusBadge='badge-done'; statusLabel=T('done');}
+  if(entry.status==='missed'){statusBadge='badge-missed'; statusLabel=T('missed');}
+  return `
+  <div class="token-hero">
+    <div style="font-size:13px;color:var(--text-dim);font-weight:600;">${esc(T('yourToken'))}</div>
+    <div class="token-num">${esc(entry.token)}</div>
+    <div style="margin-top:8px;"><span class="badge ${statusBadge}">${esc(statusLabel)}</span> ${entry.priority!=='normal' ? `<span class="badge badge-priority">${esc(entry.priority)}</span>`:''}</div>
+    <div class="token-stats">
+      <div class="token-stat"><b>${entry.status==='waiting'||entry.status==='called' ? ahead : 0}</b><span>${esc(T('patientsAhead'))}</span></div>
+      <div class="token-stat"><b>${entry.status==='waiting' ? eta.low+'–'+eta.high : '—'}</b><span>${esc(T('estWait'))} (${esc(T('min'))})</span></div>
+      <div class="token-stat"><b>${esc(nowServing ? nowServing.token : '—')}</b><span>${esc(T('currentToken'))}</span></div>
+      <div class="token-stat"><b>${esc(LANG==='bn'?doctor.nameBn:doctor.name || '—')}</b><span>${esc(doctor.room||'')}</span></div>
+    </div>
+  </div>
+  ${entry.status==='waiting' && ahead<=3 ? `<div class="alert alert-info" style="margin-top:14px;">🔔 ${esc(T('almostTurn',{n:ahead}))}</div>` : ''}
+  ${entry.status==='missed' ? `<div class="alert alert-urgent" style="margin-top:14px;">${LANG==='bn'?'আপনাকে ডাকা হয়েছিল কিন্তু পাওয়া যায়নি। রিসেপশনে যোগাযোগ করুন।':'You were called but not found. Please check with reception.'}</div>`:''}
+  `;
+}
+
+function viewTokenResult(){
+  const entry = findQueueEntry(state.lastCreatedId || state.activeTokenId);
+  if(!entry) return viewTrack();
+  return `
+  <div class="alert alert-success" style="margin-bottom:14px;">✅ ${esc(T('tokenConfirmed'))}</div>
+  ${queueLiveBlock(entry)}
+  <div class="field" style="margin-top:14px;">
+    <button class="btn btn-secondary btn-block" data-action="copy-token" data-token="${esc(entry.token)}">📋 ${LANG==='bn'?'টোকেন কপি করুন':'Copy token'} (${esc(entry.token)})</button>
+    <div class="hint" style="text-align:center;">${LANG==='bn'?'এই ব্রাউজারে আপনার টোকেন সংরক্ষিত আছে — পুনরায় খুললে স্বয়ংক্রিয়ভাবে ফিরে আসবে।':'Your token is saved on this device — reopening this page will find it automatically.'}</div>
+  </div>
+  <button class="btn btn-secondary btn-block" style="margin-top:10px;" data-action="go-home">${esc(T('back'))}</button>
+  `;
+}
+function viewApptResult(){
+  const appt = state.lastAppt;
+  const doctor = getAll('doctors').find(d=>d.id===appt.doctorId) || {};
+  return `
+  <div class="alert alert-success" style="margin-bottom:14px;">✅ ${esc(T('apptConfirmed'))}</div>
+  <div class="card">
+    <div class="qname" style="font-size:18px;margin-bottom:10px;">${esc(appt.patientName)}</div>
+    <div class="qmeta">${esc(LANG==='bn'?doctor.nameBn:doctor.name)} · ${esc(doctor.room||'')}</div>
+    <div class="qmeta">${esc(T('date'))}: ${esc(fmtDate(appt.date))}</div>
+    <div class="qmeta">${esc(T('time'))}: ${esc(appt.time)}</div>
+  </div>
+  <button class="btn btn-secondary btn-block" style="margin-top:16px;" data-action="go-home">${esc(T('back'))}</button>
+  `;
+}
+
+function viewTrack(){
+  const activeEntry = state.activeTokenId ? findQueueEntry(state.activeTokenId) : null;
+  if(activeEntry) return `
+    ${queueLiveBlock(activeEntry)}
+    <button class="btn btn-ghost" style="margin-top:10px;" data-action="clear-active-token">${LANG==='bn'?'অন্য টোকেন খুঁজুন':'Track a different token'}</button>
+  `;
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${esc(T('enterToken'))}</div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="track_input" placeholder="A-12" value="${esc(state.trackInput||'')}" style="flex:1;">
+      <button class="btn btn-primary" data-action="track-find">${esc(T('find'))}</button>
+    </div>
+    ${state.trackNotFound ? `<div class="alert alert-urgent" style="margin-top:12px;">${esc(T('tokenNotFound'))}</div>` : ''}
+  </div>`;
+}
+
+/* ============================== WAITING ROOM DISPLAY (item 19) ============================== */
+function viewWaitingRoom(){
+  const doctors = getAll('doctors').filter(d=>d.status!=='offDuty');
+  const cards = doctors.map(d=>{
+    const q = computeQueueForDoctor(d.id);
+    const nowServing = q.find(x=>x.status==='called') || q.find(x=>x.status==='in-consult');
+    const next = q.find(x=>x.status==='waiting');
+    return `<div class="wr-card">
+      <div class="wr-label">${esc(LANG==='bn'?'এখন চলছে':'NOW SERVING')}</div>
+      <div class="wr-token">${nowServing?esc(nowServing.token):'—'}</div>
+      <div class="wr-doc">${esc(LANG==='bn'?d.nameBn:d.name)} · ${esc(d.room)}</div>
+      <div class="wr-next" style="margin-top:16px;">
+        <div class="wr-label">${esc(LANG==='bn'?'পরবর্তী':'NEXT')}</div>
+        <div class="wr-token">${next?esc(next.token):'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="wr-wrap">
+    <div class="wr-clinic">${esc(AT('clinicName'))} · ${new Date().toLocaleTimeString(LANG==='bn'?'bn-BD':'en-US',{hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="wr-grid">${cards || `<div class="wr-card">${LANG==='bn'?'কোনো ডাক্তার উপলব্ধ নেই':'No doctors available'}</div>`}</div>
+    <div style="text-align:center;margin-top:20px;"><button class="btn btn-secondary" data-action="go-home" style="opacity:.7;">${esc(T('back'))}</button></div>
+  </div>`;
+}
+
+/* ============================== OFFLINE RECEPTIONIST RELAY (item 14) ==============================
+   NOTE: a web page cannot advertise itself as a Bluetooth peripheral — only native
+   mobile apps can do that — so a true phone-to-phone Bluetooth relay isn't possible
+   from a browser tab. This is a manual substitute that achieves the same goal (a
+   patient gets their queue status with zero internet) via a short status code the
+   receptionist reads/shows and the patient types in. It carries only the fields
+   the spec allows over this channel — never medical data. */
+function buildRelayCode(entry){
+  const {ahead} = positionInQueue(entry);
+  // Clinic ID(short) . token . status-code . position . minute-timestamp
+  const statusCode = {waiting:'W',called:'C','in-consult':'S',completed:'D',paused:'P',cancelled:'X',missed:'N',skipped:'K'}[entry.status] || 'W';
+  const stamp = new Date().toISOString().slice(11,16).replace(':','');
+  return `${(SETTINGS.clinicCode||'CLN')}-${entry.token}-${statusCode}${ahead}-${stamp}`;
+}
+function decodeRelayCode(code){
+  const m = /^([A-Za-z0-9]+)-([A-Za-z0-9\-]+)-([A-Z])(\d+)-(\d{4})$/.exec((code||'').trim());
+  if(!m) return null;
+  const statusMap = {W:'Waiting',C:'Called — YOUR TURN',S:'In consultation',D:'Completed',P:'Paused',X:'Cancelled',N:'No-show',K:'Skipped'};
+  return { clinic:m[1], token:m[2], status: statusMap[m[3]]||m[3], ahead:parseInt(m[4]), time:m[5].slice(0,2)+':'+m[5].slice(2) };
+}
+function viewRelay(){
+  const q = getAll('queue').filter(x=>['waiting','called','in-consult','paused'].includes(x.status));
+  return `
+  <div class="alert alert-info" style="margin-bottom:14px;">
+    ${LANG==='bn'
+      ? 'ব্রাউজার সরাসরি ব্লুটুথ রিলে করতে পারে না (এটি ওয়েব প্ল্যাটফর্মের একটি সীমাবদ্ধতা)। এর বদলে নিচের ছোট কোডটি রোগীকে দেখান/বলুন — রোগী তার ফোনে "কোড লিখুন" এ প্রবেশ করালে ইন্টারনেট ছাড়াই তার সিরিয়ালের অবস্থা দেখতে পাবে।'
+      : "Browsers can't relay over Bluetooth directly (a web-platform limitation, not a bug) — so instead, show or read this short code to the patient. They enter it under \"Enter code\" on their phone and see their status with zero internet."}
+  </div>
+  ${['reception','admin'].includes(state.session?.role) ? `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${LANG==='bn'?'রোগী বাছাই করুন':'Pick a patient'}</div>
+    <select id="relay_patient" style="margin-bottom:14px;">
+      ${q.map(item=>`<option value="${item.id}">${esc(item.token)} — ${esc(item.patientName)}</option>`).join('') || `<option>—</option>`}
+    </select>
+    <button class="btn btn-primary btn-block" data-action="relay-generate">${LANG==='bn'?'কোড তৈরি করুন':'Generate code'}</button>
+    ${state.relayCode ? `<div class="relay-code" style="margin-top:16px;">${esc(state.relayCode)}</div>` : ''}
+  </div>` : ''}
+  <div class="card" style="margin-top:16px;">
+    <div class="section-title" style="margin-top:0;">${LANG==='bn'?'রোগীর পাশে (অফলাইন)':"Patient side (offline)"}</div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="relay_input" placeholder="CLN-A-05-W3-1420" value="${esc(state.recoveryCodeInput||'')}" style="flex:1;">
+      <button class="btn btn-secondary" data-action="relay-decode">${LANG==='bn'?'দেখুন':'View'}</button>
+    </div>
+    ${relayStatusBlockHTML()}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="section-title" style="margin-top:0;">${LANG==='bn'?'লোকাল ওয়াইফাই রিলে (লাইভ, নেট ছাড়া)':'Local Wi-Fi Relay (live, no internet)'}</div>
+    <div class="hint" style="margin-bottom:12px;">${LANG==='bn'
+      ? 'ক্লিনিকের একই ওয়াইফাই/হটস্পটে থাকা দুটি ডিভাইস সরাসরি সংযুক্ত হয়ে লাইভ আপডেট পাঠাতে পারবে — ইন্টারনেট ছাড়াই। একবার সংযুক্ত হলে, নতুন কোডের প্রয়োজন হবে না। কিছু হটস্পট/গেস্ট ওয়াইফাই ডিভাইস-টু-ডিভাইস সংযোগ ব্লক করে — তখন এটি কাজ করবে না।'
+      : "Two devices on the same clinic Wi-Fi/hotspot connect directly and get live updates — no internet needed. Once paired, no new code is needed for further updates. Some hotspots/guest Wi-Fi block device-to-device traffic, in which case this won't connect."}</div>
+    ${localRelayHostHTML()}
+    <div style="height:14px;"></div>
+    ${localRelayGuestHTML()}
+  </div>
+  <button class="btn btn-ghost btn-block" style="margin-top:10px;" data-action="go-home">${esc(T('back'))}</button>
+  `;
+}
+function localRelayHostHTML(){
+  if(!['reception','admin'].includes(state.session?.role)) return '';
+  const lr = state.localRelay;
+  const q = getAll('queue').filter(x=>['waiting','called','in-consult','paused'].includes(x.status));
+  const isHosting = lr.role==='host' && lr.status!=='idle' && lr.status!=='closed';
+  return `<div class="card" style="background:var(--surface-2);">
+    <div style="font-weight:700;margin-bottom:8px;">${LANG==='bn'?'রিসেপশন: রোগীর সাথে সংযুক্ত করুন':'Reception: pair with a patient'}</div>
+    ${!isHosting ? `
+      <select id="relay_host_patient" style="margin-bottom:10px;">${q.map(item=>`<option value="${item.id}">${esc(item.token)} — ${esc(item.patientName)}</option>`).join('') || `<option>—</option>`}</select>
+      <button class="btn btn-primary btn-block" data-action="relay-host-start">${LANG==='bn'?'সংযোগ শুরু করুন':'Start pairing'}</button>
+    ` : `
+      <div class="qmeta">${LANG==='bn'?'অবস্থা':'Status'}: <b>${esc(relayStatusLabel(lr.status))}</b></div>
+      ${lr.status==='awaiting-answer' || lr.status==='connecting' ? `
+        <div class="hint" style="margin:8px 0 4px;">${LANG==='bn'?'১. এই কোডটি রোগীর ডিভাইসে টাইপ করান:':'1. Have the patient type this code into their device:'}</div>
+        <textarea readonly style="width:100%;height:60px;font-size:11px;" onclick="this.select()">${esc(lr.offerCode)}</textarea>
+        <div class="hint" style="margin:10px 0 4px;">${LANG==='bn'?'২. রোগীর ডিভাইসে তৈরি হওয়া কোডটি এখানে দিন:':'2. Enter the code the patient device generates back:'}</div>
+        <textarea id="relay_answer_input" style="width:100%;height:60px;font-size:11px;"></textarea>
+        <button class="btn btn-secondary btn-block" style="margin-top:8px;" data-action="relay-host-apply-answer">${LANG==='bn'?'সংযোগ সম্পন্ন করুন':'Complete pairing'}</button>
+      ` : ''}
+      ${lr.status==='connected' ? `<div class="alert alert-success" style="margin-top:8px;">✅ ${LANG==='bn'?'সংযুক্ত। এই টোকেনের যেকোনো পরিবর্তন এখন থেকে সাথে সাথে পাঠানো হবে।':'Connected. Any change to this token now pushes to the patient instantly.'}</div>` : ''}
+      <button class="btn btn-ghost btn-block" style="margin-top:8px;" data-action="relay-stop">${LANG==='bn'?'বিচ্ছিন্ন করুন':'Disconnect'}</button>
+    `}
+  </div>`;
+}
+function localRelayGuestHTML(){
+  const lr = state.localRelay;
+  const isGuest = lr.role==='guest' && lr.status!=='idle' && lr.status!=='closed';
+  return `<div class="card">
+    <div style="font-weight:700;margin-bottom:8px;">${LANG==='bn'?'রোগী: রিসেপশনের কোড দিন':'Patient: enter the reception code'}</div>
+    ${!isGuest ? `
+      <textarea id="relay_offer_input" placeholder="${LANG==='bn'?'রিসেপশনের দেওয়া কোড এখানে পেস্ট করুন':'Paste the code reception gave you'}" style="width:100%;height:60px;font-size:11px;"></textarea>
+      <button class="btn btn-primary btn-block" style="margin-top:8px;" data-action="relay-guest-join">${LANG==='bn'?'যোগ দিন':'Join'}</button>
+    ` : `
+      <div class="qmeta">${LANG==='bn'?'অবস্থা':'Status'}: <b>${esc(relayStatusLabel(lr.status))}</b></div>
+      ${lr.status==='awaiting-connection' ? `
+        <div class="hint" style="margin:8px 0 4px;">${LANG==='bn'?'এই কোডটি রিসেপশনকে দেখান:':'Show this code to reception:'}</div>
+        <textarea readonly style="width:100%;height:60px;font-size:11px;" onclick="this.select()">${esc(lr.answerCode)}</textarea>
+      ` : ''}
+      ${lr.status==='connected' && lr.received ? `
+        <div class="card" style="margin-top:10px;background:var(--surface-2);">
+          <div class="qname">${esc(T('yourToken'))}: ${esc(lr.received.token)} <span class="badge" style="background:var(--success-tint);color:var(--success);">${LANG==='bn'?'লাইভ (স্থানীয় ওয়াইফাই)':'Live (local Wi-Fi)'}</span></div>
+          <div class="qmeta">${LANG==='bn'?'অবস্থা':'Status'}: ${esc(lr.received.status)}</div>
+          ${lr.received.ahead!=null ? `<div class="qmeta">${esc(T('patientsAhead'))}: ${lr.received.ahead}</div>` : ''}
+          ${lr.received.doctor ? `<div class="qmeta">${esc(lr.received.doctor)} · ${esc(lr.received.room||'')}</div>` : ''}
+        </div>
+      ` : lr.status==='connected' ? `<div class="hint" style="margin-top:8px;">${LANG==='bn'?'সংযুক্ত — আপডেটের অপেক্ষায়...':'Connected — waiting for an update...'}</div>` : ''}
+      <button class="btn btn-ghost btn-block" style="margin-top:8px;" data-action="relay-stop">${LANG==='bn'?'বিচ্ছিন্ন করুন':'Disconnect'}</button>
+    `}
+  </div>`;
+}
+function relayStatusLabel(s){
+  const map = { connecting:'Connecting…', 'awaiting-answer':'Waiting for patient code', 'awaiting-connection':'Waiting for reception to connect', connected:'Connected', closed:'Disconnected' };
+  const mapBn = { connecting:'সংযোগ হচ্ছে...', 'awaiting-answer':'রোগীর কোডের অপেক্ষায়', 'awaiting-connection':'রিসেপশনের সংযোগের অপেক্ষায়', connected:'সংযুক্ত', closed:'বিচ্ছিন্ন' };
+  return (LANG==='bn'?mapBn:map)[s] || s;
+}
+// Called fresh on every render (not just on button click) so it auto-updates
+// while online, per item 6: "automatically retrieve the latest status".
+function relayStatusBlockHTML(){
+  if(!state.recoveryCodeInput) return '';
+  const decoded = decodeRelayCode(state.recoveryCodeInput);
+  if(!decoded) return `<div class="alert alert-urgent" style="margin-top:12px;">${LANG==='bn'?'কোডটি সঠিক নয়।':"That code doesn't look right."}</div>`;
+  // Correctly identify the real queue entry by exact token match — never guesses,
+  // never shows another patient's data.
+  const live = getAll('queue').find(q=>q.token===decoded.token);
+  if(live){
+    const {ahead} = positionInQueue(live);
+    const doctor = getAll('doctors').find(d=>d.id===live.doctorId);
+    const isLive = connState.status==='online' || !backendConfigured();
+    return `<div class="card" style="margin-top:12px;background:var(--surface-2);">
+      <div class="qname">${esc(T('yourToken'))}: ${esc(live.token)} ${isLive?`<span class="badge" style="background:var(--success-tint);color:var(--success);">${LANG==='bn'?'লাইভ':'Live'}</span>`:`<span class="badge" style="background:var(--warning-tint);color:var(--warning);">${LANG==='bn'?'সর্বশেষ জানা তথ্য':'Last known (offline)'}</span>`}</div>
+      <div class="qmeta">${LANG==='bn'?'অবস্থা':'Status'}: ${esc(T(live.status==='waiting'?'waiting':live.status==='called'?'called':live.status==='in-consult'?'inConsult':live.status==='completed'?'complete':live.status==='paused'?'pause':live.status==='missed'?'missed':live.status==='skipped'?'skipped':live.status))}</div>
+      ${['waiting','paused'].includes(live.status) ? `<div class="qmeta">${esc(T('patientsAhead'))}: ${ahead}</div>` : ''}
+      ${doctor ? `<div class="qmeta">${esc(LANG==='bn'?doctor.nameBn:doctor.name)} · ${esc(doctor.room||'')}</div>` : ''}
+      <div class="qmeta" style="opacity:.7;">${isLive ? (LANG==='bn'?'স্বয়ংক্রিয়ভাবে আপডেট হচ্ছে':'Updating automatically') : (connState.lastSync ? (LANG==='bn'?'শেষ সিঙ্ক: ':'Last synchronized: ')+fmtTime(connState.lastSync) : (LANG==='bn'?'কোনো সিঙ্ক তথ্য নেই':'No sync info yet'))}</div>
+    </div>`;
+  }
+  // No matching live entry cached on this device — fall back to the snapshot
+  // embedded in the code itself, clearly labeled as non-live.
+  return `<div class="card" style="margin-top:12px;background:var(--surface-2);">
+    <div class="qname">${esc(T('yourToken'))}: ${esc(decoded.token)} <span class="badge" style="background:var(--warning-tint);color:var(--warning);">${LANG==='bn'?'কোড থেকে (লাইভ নয়)':'From code (not live)'}</span></div>
+    <div class="qmeta">${LANG==='bn'?'অবস্থা':'Status'}: ${esc(decoded.status)}</div>
+    <div class="qmeta">${esc(T('patientsAhead'))}: ${esc(decoded.ahead)}</div>
+    <div class="qmeta" style="opacity:.7;">${LANG==='bn'?'কোড তৈরি হয়েছে':'Code generated at'}: ${esc(decoded.time)} — ${LANG==='bn'?'এই ডিভাইসে হালনাগাদ তথ্য নেই।':"this device has no newer data for this token."}</div>
+  </div>`;
+}
+
+/* ============================== STAFF LOGIN ============================== */
+function viewStaffLogin(){
+  return `
+  <div class="login-wrap">
+    <div class="card">
+      <div class="section-title" style="margin-top:0;">${esc(T('staffLogin'))}</div>
+      <div class="field"><label>${esc(T('username'))}</label><input type="text" id="l_user"></div>
+      <div class="field"><label>${esc(T('pin'))}</label><input type="text" id="l_pin" inputmode="numeric" maxlength="6"></div>
+      <button class="btn btn-primary btn-block" data-action="staff-login">${esc(T('login'))}</button>
+      ${state.loginError ? `<div class="alert alert-urgent" style="margin-top:12px;">${LANG==='bn'?'ভুল ইউজারনেম বা পিন।':'Incorrect username or PIN.'}</div>`:''}
+      ${SETTINGS.showDemoAccounts ? `<div class="demo-acc">
+        <b>${esc(T('demoAccounts'))}:</b><br>
+        reception / 1234 (${esc(T('reception'))})<br>
+        dr.ayesha / 1234, dr.karim / 1234 (${esc(T('doctorPanel'))})<br>
+        admin / 1234 (${esc(T('admin'))})
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+function doLogin(){
+  const g=id=>document.getElementById(id);
+  const username=g('l_user').value.trim().toLowerCase(), pin=g('l_pin').value.trim();
+  const u = getAll('users').find(x=>x.username.toLowerCase()===username && x.pin===pin) ||
+            (LOCAL.users||[]).find(x=>x.username.toLowerCase()===username && x.pin===pin);
+  if(!u){ state.loginError = true; render(); return; }
+  state.loginError = false;
+  state.session = {role:u.role, name:u.name, doctorId:u.doctorId};
+  localStorage.setItem('clinic_session', JSON.stringify(state.session));
+  go(u.role==='reception'?'reception':u.role==='doctor'?'doctor':'admin');
+}
+function doLogout(){
+  state.session = null;
+  localStorage.removeItem('clinic_session');
+  go('home');
+}
+
+/* ============================== RECEPTION VIEW ============================== */
+function viewReception(){
+  const all = getAll('queue').filter(q=>['waiting','called','paused','in-consult'].includes(q.status));
+  const doctors = getAll('doctors');
+  return `
+  ${demoModeBannerHTML()}
+  <div class="section-title" style="margin-top:0;">${esc(T('reception'))} — ${esc(state.session.name)}</div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-primary" data-action="open-walkin-modal">➕ ${esc(T('registerWalkin'))}</button>
+    <button class="btn btn-secondary" data-action="go-relay">📶 ${LANG==='bn'?'ক্লিনিক রিলে':'Clinic Relay'}</button>
+    <button class="btn btn-secondary" data-action="go-waitingroom">📺 ${LANG==='bn'?'ওয়েটিং রুম':'Waiting Room'}</button>
+  </div>
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-card"><div class="v">${all.length}</div><div class="l">${esc(T('waiting'))}</div></div>
+    <div class="stat-card"><div class="v">${getAll('queue').filter(q=>q.priority!=='normal' && ['waiting','called'].includes(q.status)).length}</div><div class="l">${esc(T('emergencyCases'))}</div></div>
+    <div class="stat-card"><div class="v">${getAll('appointments').filter(a=>a.date===todayKey()).length}</div><div class="l">${esc(T('appointment'))}</div></div>
+  </div>
+  <div class="section-title">${LANG==='bn'?'অ্যাপয়েন্টমেন্ট':'Appointments'}</div>
+  <div class="card" style="margin-bottom:16px;">${appointmentListHTML()}</div>
+  ${doctors.map(doc=>{
+    const q = computeQueueForDoctor(doc.id);
+    return `
+    <div class="section-title">${esc(LANG==='bn'?doc.nameBn:doc.name)} · ${esc(doc.room)}</div>
+    <div class="card">
+      ${q.length===0 ? `<div class="empty"><div class="em">🪑</div>${esc(T('noneWaiting'))}</div>` : q.map(item=>receptionRow(item)).join('')}
+    </div>`;
+  }).join('')}
+  <div class="section-title">${esc(T('activityLog'))}</div>
+  <div class="card">
+    ${getAll('activityLog').slice().reverse().slice(0,12).map(l=>`<div class="log-row"><b>${esc(l.actorName)}</b> — ${esc(l.action)}: ${esc(l.detail)} <span style="float:right;">${fmtTime(l.timestamp)}</span></div>`).join('') || `<div class="empty">—</div>`}
+  </div>
+  `;
+}
+function receptionRow(item){
+  const pc = getAll('precheck').find(p=>p.id===item.precheckId);
+  return `
+  <div class="qrow">
+    <div class="qtoken">${esc(item.token)}</div>
+    <div class="qmain">
+      <div class="qname">${esc(item.patientName)} ${item.priority!=='normal'?`<span class="badge badge-priority">${esc(item.priority)}</span>`:''} ${pc&&pc.urgent?`<span class="badge badge-urgent">${LANG==='bn'?'জরুরি':'urgent'}</span>`:''}</div>
+      <div class="qmeta">${esc(T(item.status==='waiting'?'waiting':item.status==='called'?'called':item.status==='paused'?'pause':'inConsult'))} · ${item.isAppointment?esc(T('appointment')):esc(T('walkin'))}</div>
+    </div>
+    <div class="qactions">
+      ${item.status==='waiting' ? `<button class="small-btn primary" data-action="q-call" data-id="${item.id}">${esc(T('callNext'))}</button>`:''}
+      ${item.status==='called' ? `<button class="small-btn primary" data-action="q-start" data-id="${item.id}">${esc(T('inConsult'))}</button><button class="small-btn danger" data-action="q-missed" data-id="${item.id}">${esc(T('missed'))}</button>`:''}
+      ${item.status==='waiting' ? `<button class="small-btn" data-action="q-skip" data-id="${item.id}">${esc(T('skip'))}</button>`:''}
+      ${item.status==='paused' ? `<button class="small-btn" data-action="q-resume" data-id="${item.id}">${esc(T('resume'))}</button>`:''}
+      ${item.status==='in-consult' ? `<button class="small-btn primary" data-action="q-complete" data-id="${item.id}">${esc(T('complete'))}</button>`:''}
+      <button class="small-btn" data-action="open-priority-modal" data-id="${item.id}">⚑ ${esc(T('setPriority'))}</button>
+      ${item.status!=='in-consult' ? `<button class="small-btn" data-action="q-pause" data-id="${item.id}">${esc(T('pause'))}</button>`:''}
+      <button class="small-btn danger" data-action="q-cancel" data-id="${item.id}">${esc(T('cancel'))}</button>
+    </div>
+  </div>`;
+}
+
+/* ============================== DOCTOR VIEW ============================== */
+function viewDoctor(){
+  const doctorId = state.session.doctorId;
+  const doctor = getAll('doctors').find(d=>d.id===doctorId) || {};
+  const q = computeQueueForDoctor(doctorId);
+  const current = q.find(x=>x.status==='in-consult') || q.find(x=>x.status==='called');
+  return `
+  ${demoModeBannerHTML()}
+  <div class="section-title" style="margin-top:0;">${esc(T('doctorPanel'))} — ${esc(LANG==='bn'?doctor.nameBn:doctor.name)}</div>
+  <div class="tabs">
+    <button class="${state.doctorTab==='queue'?'active':''}" data-action="doctor-tab" data-tab="queue">${esc(T('todaysQueue'))}</button>
+    <button class="${state.doctorTab==='reports'?'active':''}" data-action="doctor-tab" data-tab="reports">${esc(T('reportsTimeline'))}</button>
+    <button class="${state.doctorTab==='appointments'?'active':''}" data-action="doctor-tab" data-tab="appointments">${LANG==='bn'?'অ্যাপয়েন্টমেন্ট':'Appointments'} ${upcomingAppointments(doctorId).filter(a=>a.date===todayKey()).length ? `<span class="badge" style="background:var(--warning-tint);color:var(--warning);">${upcomingAppointments(doctorId).filter(a=>a.date===todayKey()).length}</span>`:''}</button>
+  </div>
+  ${state.doctorTab==='appointments' ? `<div class="card">${appointmentListHTML(doctorId)}</div>` : ''}
+  ${state.doctorTab==='queue' ? `
+  ${current ? `
+  <div class="card" style="margin-bottom:16px;border-color:var(--teal);">
+    <div class="section-title" style="margin-top:0;">${LANG==='bn'?'বর্তমান রোগী':'Current patient'}</div>
+    ${doctorPatientCard(current, true)}
+  </div>` : ''}
+  <div class="section-title">${esc(T('todaysQueue'))} (${q.filter(x=>x.status==='waiting').length})</div>
+  <div class="card">
+    ${q.filter(x=>x.status==='waiting').length===0 ? `<div class="empty"><div class="em">✅</div>${esc(T('noneWaiting'))}</div>` :
+      q.filter(x=>x.status==='waiting').map(item=>`
+      <div class="qrow">
+        <div class="qtoken">${esc(item.token)}</div>
+        <div class="qmain">
+          <div class="qname">${esc(item.patientName)} ${item.priority!=='normal'?`<span class="badge badge-priority">${esc(item.priority)}</span>`:''}</div>
+          <div class="qmeta">${esc(T('waiting'))}</div>
+        </div>
+        <button class="small-btn primary" data-action="q-call" data-id="${item.id}">${esc(T('callNext'))}</button>
+      </div>`).join('')}
+  </div>
+  ` : doctorReportsTab(doctorId)}
+  `;
+}
+function doctorPatientCard(item, showActions){
+  const pc = getAll('precheck').find(p=>p.id===item.precheckId);
+  const reports = pc ? getAll('reports').filter(r=>pc.reportIds && pc.reportIds.includes(r.id)) : [];
+  return `
+  <div class="qname" style="font-size:17px;">${esc(item.patientName)} — ${esc(item.token)}</div>
+  ${pc ? `<div class="qmeta" style="margin:6px 0 12px;">${LANG==='bn'?'সমস্যা':'Complaint'}: ${esc(pc.symptoms)} (${esc(pc.durationDays||'—')} ${esc(T('days'))})</div>` : `<div class="qmeta" style="margin:6px 0 12px;">${LANG==='bn'?'ওয়াক-ইন রোগী, প্রি-চেক নেই':'Walk-in patient, no pre-check submitted'}</div>`}
+  ${pc && pc.urgent ? `<div class="alert alert-urgent" style="margin-bottom:12px;">⚠️ ${esc(T('urgentBanner'))}</div>`:''}
+  ${pc ? `<div class="ai-box"><b>${esc(T('aiSummaryTitle'))}</b><br>${esc(pc.aiSummary)}</div>
+  <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">${esc(T('aiNote'))}</div>` : ''}
+  ${pc ? `<div class="grid2" style="margin-top:12px;">
+      <div class="field" style="margin-bottom:0;"><label>${LANG==='bn'?'ওষুধ':'Medication'}</label><div class="qmeta">${esc(pc.meds||'—')}</div></div>
+      <div class="field" style="margin-bottom:0;"><label>${LANG==='bn'?'অ্যালার্জি':'Allergy'}</label><div class="qmeta">${esc(pc.allergies||'—')}</div></div>
+    </div>` : ''}
+  ${reports.length ? `<div class="field" style="margin-top:12px;"><label>${esc(T('viewOriginal'))}</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">${reports.map(r=>`<div class="doc-thumb">📄<br>${esc(r.filename)}</div>`).join('')}</div></div>` : ''}
+  ${showActions ? `
+  <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+    ${item.status==='called' ? `<button class="btn btn-primary" data-action="q-start" data-id="${item.id}">${esc(T('inConsult'))}</button>`:''}
+    ${item.status==='in-consult' ? `<button class="btn btn-primary" data-action="open-complete-modal" data-id="${item.id}">${esc(T('complete'))}</button>`:''}
+  </div>` : ''}
+  `;
+}
+/* ============================== DAILY REPORT EXPORTS (items 21-23) ============================== */
+function dailyReportRows(doctorId){
+  let rows = getAll('queue').filter(q=>(q.createdAt||'').slice(0,10)===todayKey());
+  if(doctorId) rows = rows.filter(q=>q.doctorId===doctorId);
+  return rows.slice().sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt));
+}
+function waitMinutes(entry){
+  if(!entry.calledAt) return null;
+  return Math.round((new Date(entry.calledAt) - new Date(entry.createdAt))/60000);
+}
+function consultMinutes(entry){
+  if(!entry.calledAt || !entry.completedAt) return null;
+  return Math.round((new Date(entry.completedAt) - new Date(entry.calledAt))/60000);
+}
+function dailySummary(doctorId){
+  const rows = dailyReportRows(doctorId);
+  const completed = rows.filter(r=>r.status==='completed');
+  const waits = rows.map(waitMinutes).filter(x=>x!=null);
+  const consults = completed.map(consultMinutes).filter(x=>x!=null);
+  const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+  return {
+    total: rows.length,
+    completed: completed.length,
+    waiting: rows.filter(r=>r.status==='waiting').length,
+    inConsult: rows.filter(r=>r.status==='in-consult').length,
+    noShow: rows.filter(r=>r.status==='missed').length,
+    cancelled: rows.filter(r=>r.status==='cancelled').length,
+    skipped: rows.filter(r=>r.status==='skipped').length,
+    priority: rows.filter(r=>r.priority && r.priority!=='normal').length,
+    avgWait: avg(waits), avgConsult: avg(consults),
+    attendanceRate: rows.length ? Math.round(completed.length/rows.length*100) : 0,
+  };
+}
+function exportExcel(doctorId){
+  if(typeof XLSX==='undefined'){ alert(LANG==='bn'?'এক্সপোর্ট লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন।':'Export library failed to load — check your internet connection.'); return; }
+  const rows = dailyReportRows(doctorId);
+  const s = dailySummary(doctorId);
+  const doctor = doctorId ? getAll('doctors').find(d=>d.id===doctorId) : null;
+  const summarySheet = [
+    ['Clinic Daily Patient Summary'],
+    ['Date', todayKey()],
+    ['Doctor', doctor ? doctor.name : 'All doctors'],
+    [],
+    ['Total patients', s.total], ['Completed', s.completed], ['Waiting', s.waiting],
+    ['In consultation', s.inConsult], ['No-show', s.noShow], ['Cancelled', s.cancelled],
+    ['Skipped', s.skipped], ['Priority patients', s.priority],
+    ['Avg waiting time (min)', s.avgWait], ['Avg consultation time (min)', s.avgConsult],
+    ['Attendance rate (%)', s.attendanceRate],
+    [],
+  ];
+  const header = ['Serial','Patient','Registration Time','Status','Priority','Consultation Start','Consultation End','Waiting Time (min)'];
+  const dataRows = rows.map(r=>[r.token, r.patientName, fmtTime(r.createdAt), r.status, r.priority||'normal', fmtTime(r.calledAt), fmtTime(r.completedAt), waitMinutes(r) ?? '']);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(summarySheet.concat([header], dataRows));
+  ws['!cols'] = [{wch:10},{wch:20},{wch:16},{wch:14},{wch:10},{wch:18},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Report');
+  XLSX.writeFile(wb, `clinic-daily-report-${todayKey()}${doctor?'-'+doctor.name.replace(/\s+/g,'_'):''}.xlsx`);
+}
+function exportWord(doctorId){
+  if(typeof htmlDocx==='undefined'){ alert(LANG==='bn'?'এক্সপোর্ট লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন।':'Export library failed to load — check your internet connection.'); return; }
+  const rows = dailyReportRows(doctorId);
+  const s = dailySummary(doctorId);
+  const doctor = doctorId ? getAll('doctors').find(d=>d.id===doctorId) : null;
+  const html = `<html><head><meta charset="utf-8"></head><body style="font-family:Calibri,Arial,sans-serif;">
+    <h1>Clinic Daily Patient Report</h1>
+    <p><b>Clinic:</b> ${esc(AT('clinicName'))}<br>
+       <b>Doctor:</b> ${esc(doctor?doctor.name:'All doctors')}<br>
+       <b>Date:</b> ${esc(todayKey())}</p>
+    <h2>Summary</h2>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+      <tr><td>Total patients</td><td>${s.total}</td></tr>
+      <tr><td>Completed</td><td>${s.completed}</td></tr>
+      <tr><td>Waiting</td><td>${s.waiting}</td></tr>
+      <tr><td>In consultation</td><td>${s.inConsult}</td></tr>
+      <tr><td>No-show</td><td>${s.noShow}</td></tr>
+      <tr><td>Cancelled</td><td>${s.cancelled}</td></tr>
+      <tr><td>Skipped</td><td>${s.skipped}</td></tr>
+      <tr><td>Priority patients</td><td>${s.priority}</td></tr>
+      <tr><td>Avg waiting time (min)</td><td>${s.avgWait}</td></tr>
+      <tr><td>Avg consultation time (min)</td><td>${s.avgConsult}</td></tr>
+      <tr><td>Attendance rate (%)</td><td>${s.attendanceRate}</td></tr>
+    </table>
+    <h2>Patients</h2>
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;width:100%;">
+      <tr><th>Serial</th><th>Patient</th><th>Registered</th><th>Status</th><th>Priority</th><th>Consult Start</th><th>Consult End</th></tr>
+      ${rows.map(r=>`<tr><td>${esc(r.token)}</td><td>${esc(r.patientName)}</td><td>${esc(fmtTime(r.createdAt))}</td><td>${esc(r.status)}</td><td>${esc(r.priority||'normal')}</td><td>${esc(fmtTime(r.calledAt))}</td><td>${esc(fmtTime(r.completedAt))}</td></tr>`).join('')}
+    </table>
+  </body></html>`;
+  const blob = htmlDocx.asBlob(html);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `clinic-daily-report-${todayKey()}${doctor?'-'+doctor.name.replace(/\s+/g,'_'):''}.docx`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* ============================== APPOINTMENTS (bug fix: bookings had no visible queue-management surface) ============================== */
+// Booking created an 'appointments' record but nothing ever turned it into a
+// queue entry, so staff had no token to call/manage — this was the real gap.
+function upcomingAppointments(doctorId){
+  let appts = getAll('appointments').filter(a=>a.status!=='checked-in' && a.status!=='cancelled');
+  if(doctorId) appts = appts.filter(a=>a.doctorId===doctorId);
+  return appts.slice().sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+}
+async function checkInAppointment(apptId){
+  const appt = getAll('appointments').find(a=>a.id===apptId);
+  if(!appt) return;
+  if(!state.appointmentRequestIds) state.appointmentRequestIds = {};
+  if(!state.appointmentRequestIds[apptId]) state.appointmentRequestIds[apptId] = uid();
+  const result = await createQueueToken(appt.doctorId, {
+    patientId:appt.patientId, patientName:appt.patientName, status:'waiting',
+    priority:'normal', priorityReason:'', isAppointment:true, appointmentId:apptId,
+  }, state.appointmentRequestIds[apptId]);
+  if(!result.ok){ alert(tokenNotConfirmedMsg(result.reason)); return; }
+  await updateDoc('appointments', apptId, {status:'checked-in', queueId:result.doc.id});
+  await log('Appointment checked in', `${appt.patientName} → token ${result.doc.token}`);
+}
+async function cancelAppointment(apptId){
+  const appt = getAll('appointments').find(a=>a.id===apptId);
+  if(!appt) return;
+  await updateDoc('appointments', apptId, {status:'cancelled'});
+  await log('Appointment cancelled', appt.patientName);
+}
+function appointmentListHTML(doctorId){
+  const appts = upcomingAppointments(doctorId);
+  if(appts.length===0) return `<div class="empty"><div class="em">📅</div>${LANG==='bn'?'কোনো অ্যাপয়েন্টমেন্ট নেই':'No appointments'}</div>`;
+  return appts.map(a=>{
+    const doctor = getAll('doctors').find(d=>d.id===a.doctorId);
+    const isToday = a.date===todayKey();
+    return `<div class="qrow">
+      <div class="qtoken" style="font-size:11px;">${esc(a.date.slice(5))}<br>${esc(a.time||'')}</div>
+      <div class="qmain">
+        <div class="qname">${esc(a.patientName)} ${!isToday?`<span class="badge" style="background:var(--surface-2);">${LANG==='bn'?'ভবিষ্যৎ':'upcoming'}</span>`:''}</div>
+        <div class="qmeta">${doctor ? esc(LANG==='bn'?doctor.nameBn:doctor.name) : ''}</div>
+      </div>
+      <div class="qactions">
+        ${isToday ? `<button class="small-btn primary" data-action="appt-checkin" data-id="${a.id}">${LANG==='bn'?'চেক-ইন':'Check in'}</button>` : ''}
+        <button class="small-btn danger" data-action="appt-cancel" data-id="${a.id}">${LANG==='bn'?'বাতিল':'Cancel'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function doctorReportsTab(doctorId){
+  const reports = getAll('reports').slice().sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const s = dailySummary(doctorId);
+  return `
+  <div class="stat-grid" style="margin-bottom:16px;">
+    <div class="stat-card"><div class="v">${s.total}</div><div class="l">${esc(T('patientsToday'))}</div></div>
+    <div class="stat-card"><div class="v">${s.completed}</div><div class="l">${esc(T('done'))}</div></div>
+    <div class="stat-card"><div class="v">${s.avgWait}</div><div class="l">${esc(T('avgWait'))} (${esc(T('min'))})</div></div>
+    <div class="stat-card"><div class="v">${s.attendanceRate}%</div><div class="l">${LANG==='bn'?'উপস্থিতির হার':'Attendance rate'}</div></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-secondary" data-action="export-excel" data-doctor="${esc(doctorId)}">⬇️ Excel (.xlsx)</button>
+    <button class="btn btn-secondary" data-action="export-word" data-doctor="${esc(doctorId)}">⬇️ Word (.docx)</button>
+  </div>
+  <div class="card">
+    ${reports.length===0 ? `<div class="empty"><div class="em">📁</div>${esc(T('noReports'))}</div>` :
+      reports.map(r=>{
+        const patient = getAll('patients').find(p=>p.id===r.patientId);
+        return `<div class="timeline-item"><div class="tl-dot"></div><div><div class="tl-date">${fmtDate(r.date)}</div><div class="tl-title">${esc(r.filename)} — ${esc(patient?patient.name:'')}</div></div></div>`;
+      }).join('')}
+  </div>`;
+}
+
+/* ============================== ADMIN VIEW ============================== */
+function viewAdmin(){
+  return `
+  ${demoModeBannerHTML()}
+  <div class="section-title" style="margin-top:0;">${esc(T('admin'))} — ${esc(state.session.name)}</div>
+  <div class="tabs">
+    <button class="${state.adminTab==='analytics'?'active':''}" data-action="admin-tab" data-tab="analytics">${esc(T('analytics'))}</button>
+    <button class="${state.adminTab==='queue'?'active':''}" data-action="admin-tab" data-tab="queue">${LANG==='bn'?'পূর্ণ সিরিয়াল নিয়ন্ত্রণ':'Full Queue Control'}</button>
+    <button class="${state.adminTab==='appointments'?'active':''}" data-action="admin-tab" data-tab="appointments">${LANG==='bn'?'অ্যাপয়েন্টমেন্ট':'Appointments'} ${upcomingAppointments().filter(a=>a.date===todayKey()).length ? `<span class="badge" style="background:var(--warning-tint);color:var(--warning);">${upcomingAppointments().filter(a=>a.date===todayKey()).length}</span>`:''}</button>
+    <button class="${state.adminTab==='doctors'?'active':''}" data-action="admin-tab" data-tab="doctors">${esc(T('doctorPanel'))}</button>
+    <button class="${state.adminTab==='staff'?'active':''}" data-action="admin-tab" data-tab="staff">${LANG==='bn'?'স্টাফ অ্যাকাউন্ট':'Staff Accounts'}</button>
+    <button class="${state.adminTab==='settings'?'active':''}" data-action="admin-tab" data-tab="settings">${LANG==='bn'?'অ্যাপ সেটিংস':'App Settings'}</button>
+    <button class="${state.adminTab==='assistant'?'active':''}" data-action="admin-tab" data-tab="assistant">${LANG==='bn'?'এআই সহায়ক':'AI Assistant'}</button>
+  </div>
+  ${state.adminTab==='analytics' ? adminAnalytics() : state.adminTab==='queue' ? adminQueueControl() : state.adminTab==='appointments' ? `<div class="card">${appointmentListHTML()}</div>` : state.adminTab==='doctors' ? adminDoctors() : state.adminTab==='staff' ? adminStaff() : state.adminTab==='settings' ? adminSettings() : adminAssistant()}
+  `;
+}
+function adminQueueControl(){
+  // Item 4: Admin override — the same queue actions Reception/Doctor use, but
+  // across every doctor's queue at once, with no restriction.
+  const doctors = getAll('doctors');
+  return doctors.map(d=>{
+    const q = computeQueueForDoctor(d.id);
+    return `<div class="card" style="margin-bottom:14px;">
+      <div class="section-title" style="margin-top:0;">${esc(LANG==='bn'?d.nameBn:d.name)} — ${esc(d.room||'')} <span style="font-weight:400;font-size:12px;color:var(--text-dim);">(${q.length} ${LANG==='bn'?'জন':'in queue'})</span></div>
+      ${q.length===0 ? `<div class="empty"><div class="em">✅</div>${esc(T('noneWaiting'))}</div>` : q.map(item=>receptionRow(item)).join('')}
+    </div>`;
+  }).join('') || `<div class="empty"><div class="em">🏥</div>${LANG==='bn'?'কোনো ডাক্তার নেই':'No doctors set up yet'}</div>`;
+}
+function adminAnalytics(){
+  const completed = getAll('queue').filter(q=>q.status==='completed');
+  const missed = getAll('queue').filter(q=>q.status==='missed');
+  const totalToday = getAll('queue').filter(q=>(q.createdAt||'').slice(0,10)===todayKey());
+  const noShowRate = totalToday.length ? Math.round(missed.length/totalToday.length*100) : 0;
+  const doctors = getAll('doctors');
+  const maxLoad = Math.max(1, ...doctors.map(d=>computeQueueForDoctor(d.id).length + getAll('queue').filter(q=>q.doctorId===d.id && q.status==='completed').length));
+  return `
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-secondary" data-action="export-excel" data-doctor="">⬇️ ${LANG==='bn'?'পূর্ণ ক্লিনিক এক্সেল':'Full clinic Excel'}</button>
+    <button class="btn btn-secondary" data-action="export-word" data-doctor="">⬇️ ${LANG==='bn'?'পূর্ণ ক্লিনিক ওয়ার্ড':'Full clinic Word'}</button>
+  </div>
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-card"><div class="v">${totalToday.length}</div><div class="l">${esc(T('patientsToday'))}</div></div>
+    <div class="stat-card"><div class="v">18–25</div><div class="l">${esc(T('avgWait'))} (${esc(T('min'))})</div></div>
+    <div class="stat-card"><div class="v">~11</div><div class="l">${esc(T('avgConsult'))} (${esc(T('min'))})</div></div>
+    <div class="stat-card"><div class="v">${noShowRate}%</div><div class="l">${esc(T('noShowRate'))}</div></div>
+    <div class="stat-card"><div class="v">${getAll('queue').filter(q=>q.priority!=='normal').length}</div><div class="l">${esc(T('emergencyCases'))}</div></div>
+  </div>
+  <div class="section-title">${esc(T('doctorWorkload'))}</div>
+  <div class="card">
+    ${doctors.map(d=>{
+      const load = computeQueueForDoctor(d.id).length + getAll('queue').filter(q=>q.doctorId===d.id && q.status==='completed').length;
+      return `<div class="bar-row"><div class="bar-label">${esc(LANG==='bn'?d.nameBn:d.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${(load/maxLoad*100)||2}%"></div></div><div class="bar-val">${load}</div></div>`;
+    }).join('')}
+  </div>
+  `;
+}
+function adminDoctors(){
+  return `
+  <div style="margin-bottom:14px;"><button class="btn btn-primary" data-action="open-doctor-modal">➕ ${esc(T('addDoctor'))}</button></div>
+  <div class="card" style="display:flex;flex-direction:column;">
+    ${getAll('doctors').length===0 ? `<div class="empty"><div class="em">👨‍⚕️</div>${LANG==='bn'?'এখনো কোনো ডাক্তার যোগ করা হয়নি।':'No doctors added yet.'}</div>` : getAll('doctors').map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 2px;${i>0?'border-top:1px solid var(--border);':''}">
+      <div class="qtoken" style="border-radius:50%;">👨‍⚕️</div>
+      <div class="qmain">
+        <div class="qname">${esc(LANG==='bn'?d.nameBn:d.name)}</div>
+        <div class="qmeta">${esc(LANG==='bn'?d.specialtyBn:d.specialty)} · ${esc(d.room)} · ${esc(d.hoursStart)}–${esc(d.hoursEnd)} · avg ${esc(d.avgConsultMin)}min</div>
+      </div>
+      <div class="qactions">
+        <button class="small-btn" data-action="open-doctor-modal" data-id="${d.id}">${LANG==='bn'?'সম্পাদনা':'Edit'}</button>
+        <button class="small-btn danger" data-action="delete-doctor" data-id="${d.id}">${LANG==='bn'?'মুছুন':'Delete'}</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+function adminStaff(){
+  return `
+  <div style="margin-bottom:14px;"><button class="btn btn-primary" data-action="open-user-modal">➕ ${LANG==='bn'?'নতুন স্টাফ যোগ করুন':'Add staff account'}</button></div>
+  <div class="card" style="display:flex;flex-direction:column;">
+    ${getAll('users').map((u,i)=>{
+      const doc = u.doctorId ? getAll('doctors').find(d=>d.id===u.doctorId) : null;
+      return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 2px;${i>0?'border-top:1px solid var(--border);':''}">
+        <div class="qtoken" style="border-radius:50%;">${u.role==='doctor'?'👨‍⚕️':u.role==='reception'?'🧑‍💼':'🛠️'}</div>
+        <div class="qmain">
+          <div class="qname">${esc(u.name)} <span class="badge badge-waiting">${esc(u.role)}</span></div>
+          <div class="qmeta">${LANG==='bn'?'ইউজারনেম':'Username'}: ${esc(u.username)} · ${esc(T('pin'))}: ${esc(u.pin)}${doc?` · ${esc(LANG==='bn'?doc.nameBn:doc.name)}`:''}</div>
+        </div>
+        <div class="qactions">
+          <button class="small-btn" data-action="open-user-modal" data-id="${u.id}">${LANG==='bn'?'সম্পাদনা':'Edit'}</button>
+          <button class="small-btn danger" data-action="delete-user" data-id="${u.id}">${LANG==='bn'?'মুছুন':'Delete'}</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function adminSettings(){
+  const s = SETTINGS;
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${LANG==='bn'?'লোগো':'Logo'}</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;">
+      <div class="brand-mark" style="width:56px;height:56px;font-size:26px;">${s.logoAssetUrl?`<img src="${esc(s.logoAssetUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:11px;">`:esc(s.logoEmoji)}</div>
+      <input type="text" id="set_logoEmoji" value="${esc(s.logoEmoji)}" placeholder="🏥" maxlength="4" style="width:80px;">
+      <button class="small-btn" data-action="pick-logo-file">${LANG==='bn'?'ছবি আপলোড':'Upload image'}</button>
+      ${s.logoAssetUrl?`<button class="small-btn danger" data-action="clear-logo">${LANG==='bn'?'ছবি সরান':'Remove image'}</button>`:''}
+      <input type="file" id="logo_file" accept="image/*" style="display:none;">
+    </div>
+    ${!assetsCap ? `<div class="hint" style="margin:-10px 0 16px;">${LANG==='bn'?'এই মুহূর্তে ছবি আপলোড সুবিধা উপলব্ধ নয়; ইমোজি লোগো ব্যবহার করুন।':"Image upload isn't available right now — an emoji logo still works."}</div>` : ''}
+
+    <div class="section-title">${LANG==='bn'?'অ্যাপের নাম':'App name'}</div>
+    <div class="grid2">
+      <div class="field"><label>English</label><input type="text" id="set_nameEn" value="${esc(s.clinicName.en)}"></div>
+      <div class="field"><label>বাংলা</label><input type="text" id="set_nameBn" value="${esc(s.clinicName.bn)}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'সাবটাইটেল (ইংরেজি)':'Subtitle (English)'}</label><input type="text" id="set_subEn" value="${esc(s.clinicSub.en)}"></div>
+      <div class="field"><label>${LANG==='bn'?'সাবটাইটেল (বাংলা)':'Subtitle (Bangla)'}</label><input type="text" id="set_subBn" value="${esc(s.clinicSub.bn)}"></div>
+    </div>
+
+    <div class="section-title">${LANG==='bn'?'হোম পেজের লেখা':'Home page text'}</div>
+    <div class="field"><label>${LANG==='bn'?'শিরোনাম (ইংরেজি)':'Headline (English)'}</label><input type="text" id="set_heroTEn" value="${esc(s.heroTitle.en)}"></div>
+    <div class="field"><label>${LANG==='bn'?'শিরোনাম (বাংলা)':'Headline (Bangla)'}</label><input type="text" id="set_heroTBn" value="${esc(s.heroTitle.bn)}"></div>
+    <div class="field"><label>${LANG==='bn'?'উপশিরোনাম (ইংরেজি)':'Subtext (English)'}</label><input type="text" id="set_heroSEn" value="${esc(s.heroSub.en)}"></div>
+    <div class="field"><label>${LANG==='bn'?'উপশিরোনাম (বাংলা)':'Subtext (Bangla)'}</label><input type="text" id="set_heroSBn" value="${esc(s.heroSub.bn)}"></div>
+
+    <div class="section-title">${LANG==='bn'?'লগইন পেজ':'Login page'}</div>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-bottom:18px;">
+      <input type="checkbox" id="set_showDemo" ${s.showDemoAccounts?'checked':''} style="margin-top:3px;">
+      <span>${LANG==='bn'?'স্টাফ লগইন পেজে ডেমো অ্যাকাউন্টের তথ্য দেখান':'Show demo account details on the staff login screen'}</span>
+    </label>
+
+    <div class="section-title">${LANG==='bn'?'থিম রং':'Theme colors'}</div>
+    <div class="grid2" style="grid-template-columns:repeat(3,1fr);">
+      ${colorFieldHTML(LANG==='bn'?'প্রাইমারি':'Primary', 'set_c_primary', s.theme?.primary||'#0E6E67', "previewThemeField('primary', v)")}
+      ${colorFieldHTML(LANG==='bn'?'সেকেন্ডারি':'Secondary', 'set_c_secondary', s.theme?.secondary||'#2E6BA6', "previewThemeField('secondary', v)")}
+      ${colorFieldHTML(LANG==='bn'?'অ্যাকসেন্ট':'Accent', 'set_c_accent', s.theme?.accent||'#B9791C', "previewThemeField('accent', v)")}
+      ${colorFieldHTML(LANG==='bn'?'ব্যাকগ্রাউন্ড':'Background', 'set_c_bg', s.theme?.bg||'#F6F9F8', "previewThemeField('bg', v)")}
+      ${colorFieldHTML(LANG==='bn'?'টেক্সট':'Text', 'set_c_text', s.theme?.text||'#132321', "previewThemeField('text', v)")}
+      ${colorFieldHTML(LANG==='bn'?'বাটন':'Button', 'set_c_button', s.theme?.button||'#0E6E67', "previewThemeField('primary', v)")}
+      ${colorFieldHTML(LANG==='bn'?'কার্ড ব্যাকগ্রাউন্ড':'Card background', 'set_c_cardbg', s.theme?.cardBg||'#FFFFFF', "previewThemeField('cardBg', v)")}
+      ${colorFieldHTML(LANG==='bn'?'কার্ড বর্ডার':'Card border', 'set_c_cardborder', s.theme?.cardBorder||'#E3E8E6', "previewThemeField('cardBorder', v)")}
+      ${colorFieldHTML(LANG==='bn'?'সাবটাইটেল টেক্সট':'Subtitle text', 'set_c_subtitle', s.theme?.subtitle||'#6B7B77', "previewThemeField('subtitle', v)")}
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">${LANG==='bn'?'রং বাছাই করা মাত্রই উপরে সাথে সাথে দেখা যাবে। সংরক্ষণ করলে সব সংযুক্ত স্ক্রিনে স্থায়ীভাবে প্রয়োগ হবে।':'Colours update on-screen the instant you pick them. Click Save to make it permanent for every connected screen.'}</div>
+
+    <div class="section-title">${LANG==='bn'?'ওয়েবসাইট ফন্ট':'Website font'}</div>
+    <div class="field">
+      <select id="set_font" onchange="previewFont(this.value)">
+        ${Object.entries(FONT_OPTIONS).map(([key,f])=>`<option value="${key}" ${(s.font||'inter')===key?'selected':''}>${esc(f.label)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">${LANG==='bn'?'ফন্ট বাছাই করা মাত্রই সাথে সাথে প্রয়োগ হবে। সংরক্ষণ করতে "Save" চাপুন।':'The font updates the instant you pick it. Click Save to make it stick.'}</div>
+
+    ${cardCustomizationHTML()}
+
+    <div class="section-title">${LANG==='bn'?'সিরিয়াল নোটিফিকেশন':'Queue notifications'}</div>
+    <div class="field"><label>${LANG==='bn'?'"কাছাকাছি" থ্রেশহোল্ড (কতজন বাকি থাকলে জানাবে)':'Near-turn threshold (patients remaining)'}</label>
+      <input type="number" id="set_nearturn" value="${s.nearTurnThreshold ?? CONFIG.NEAR_TURN_DEFAULT}" min="1" max="20">
+    </div>
+
+    <button class="btn btn-primary btn-block" data-action="settings-save">${esc(T('save'))}</button>
+  </div>`;
+}
+function adminAssistant(){
+  return `
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">${esc(T('askAssistant'))}</div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="ai_q" placeholder="${esc(T('askPlaceholder'))}" style="flex:1;">
+      <button class="btn btn-primary" data-action="ai-ask" ${state.aiAssistantLoading?'disabled':''}>${state.aiAssistantLoading?'<span class="spinner"></span>':esc(T('ask'))}</button>
+    </div>
+    ${state.aiAssistantAnswer ? `<div class="ai-box" style="margin-top:14px;">${esc(state.aiAssistantAnswer)}</div>` : ''}
+    ${!sampleFn ? `<div class="hint" style="margin-top:8px;">${LANG==='bn'?'এআই সহায়ক এই মুহূর্তে উপলব্ধ নেই।':'AI assistant is not available in this environment right now.'}</div>`:''}
+  </div>`;
+}
+async function askAssistant(){
+  const q = document.getElementById('ai_q').value.trim();
+  if(!q || !sampleFn) return;
+  state.aiAssistantLoading = true; render();
+  const waiting = getAll('queue').filter(x=>x.status==='waiting');
+  const doctors = getAll('doctors').map(d=>({name:d.name, waiting: computeQueueForDoctor(d.id).length}));
+  const missed = getAll('queue').filter(x=>x.status==='missed').length;
+  const appts = getAll('appointments').filter(a=>a.date===todayKey());
+  const context = `Operational data snapshot:
+Patients waiting now: ${waiting.length}
+Per-doctor waiting counts: ${JSON.stringify(doctors)}
+No-shows today: ${missed}
+Appointments today: ${appts.length}`;
+  try{
+    const res = await sampleFn(`You are a clinic operations assistant. Answer ONLY using the data snapshot below, in under 60 words, plain text. Never give medical advice or diagnoses — you only answer operational/logistics questions.
+
+${context}
+
+Question: ${q}`, {modelTier:'quick'});
+    state.aiAssistantAnswer = res.text.trim();
+  }catch(e){ state.aiAssistantAnswer = LANG==='bn' ? 'দুঃখিত, উত্তর দেওয়া সম্ভব হয়নি।' : 'Sorry, could not get an answer right now.'; }
+  state.aiAssistantLoading = false;
+  render();
+}
+
+/* ============================== MODALS ============================== */
+function openWalkinModal(){
+  state.modal = {type:'walkin'};
+  state.modalDraft = {name:'', phone:'', doctorId:(getAll('doctors')[0]||{}).id||''};
+  render();
+}
+function renderWalkinModal(){
+  const d = state.modalDraft;
+  return `
+    <div class="modal-head"><h3>${esc(T('registerWalkin'))}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+    <div class="field"><label>${esc(T('fullName'))} *</label><input type="text" value="${esc(d.name||'')}" oninput="state.modalDraft.name=this.value"></div>
+    <div class="field"><label>${esc(T('phone'))}</label><input type="tel" value="${esc(d.phone||'')}" oninput="state.modalDraft.phone=this.value"></div>
+    <div class="field"><label>${esc(T('chooseDoctor'))}</label><select onchange="state.modalDraft.doctorId=this.value">${getAll('doctors').map(dd=>`<option value="${dd.id}" ${dd.id===d.doctorId?'selected':''}>${esc(LANG==='bn'?dd.nameBn:dd.name)}</option>`).join('')}</select></div>
+    <button class="btn btn-primary btn-block" data-action="walkin-confirm">${esc(T('addToQueue'))}</button>
+  `;
+}
+async function confirmWalkin(){
+  if(state.submitting) return;
+  const {name, phone, doctorId} = state.modalDraft;
+  if(!name) return;
+  if(!state.modal.requestId) state.modal.requestId = uid();
+  state.submitting = true; render();
+  try{
+    const patient = await addDoc('patients', {name, phone, createdAt: nowISO()});
+    const result = await createQueueToken(doctorId, {patientId:patient.id, patientName:name, status:'waiting', priority:'normal', priorityReason:'', isAppointment:false}, state.modal.requestId);
+    if(!result.ok){ alert(tokenNotConfirmedMsg(result.reason)); return; }
+    await log('Walk-in registered', `${name} → token ${result.doc.token}`);
+    state.modal = null; state.modalDraft = null;
+  } finally { state.submitting = false; render(); }
+}
+function openPriorityModal(id){
+  const item = findQueueEntry(id);
+  state.modal = {type:'priority', id};
+  state.modalDraft = {priSel: item.priority, reason: item.priorityReason||''};
+  render();
+}
+function renderPriorityModal(){
+  const id = state.modal.id;
+  const d = state.modalDraft;
+  const opts = [['normal',T('normal')||'Normal'],['emergency','Emergency'],['elderly','Elderly'],['disability','Disability'],['pregnant','Pregnant'],['child','Child'],['other','Other']];
+  return `
+    <div class="modal-head"><h3>${esc(T('setPriority'))}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+    <div class="pill-select" id="pri_opts">${opts.map(o=>`<button type="button" data-pri="${o[0]}" class="${d.priSel===o[0]?'sel':''}">${o[1]}</button>`).join('')}</div>
+    <div class="field" style="margin-top:14px;"><label>${esc(T('priorityReason'))} *</label><input type="text" value="${esc(d.reason||'')}" oninput="state.modalDraft.reason=this.value"></div>
+    <button class="btn btn-primary btn-block" data-action="priority-confirm" data-id="${id}">${esc(T('save'))}</button>
+  `;
+}
+async function confirmPriority(id){
+  const {priSel, reason} = state.modalDraft;
+  if(!priSel || !reason){ alert(T('required')); return; }
+  await updateDoc('queue', id, {priority: priSel, priorityReason: reason});
+  await log('Priority changed', `${T('setPriority')}: ${priSel} — ${reason}`);
+  state.modal = null; state.modalDraft = null; render();
+}
+function openCompleteModal(id){
+  state.modal = {type:'complete', id};
+  state.modalDraft = {followUpDays:''};
+  render();
+}
+function renderCompleteModal(){
+  const d = state.modalDraft;
+  return `
+    <div class="modal-head"><h3>${esc(T('complete'))}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+    <div class="field"><label>${esc(T('followUp'))}</label><input type="number" value="${esc(d.followUpDays||'')}" placeholder="14" oninput="state.modalDraft.followUpDays=this.value"></div>
+    <button class="btn btn-primary btn-block" data-action="complete-confirm" data-id="${state.modal.id}">${esc(T('complete'))}</button>
+  `;
+}
+async function confirmComplete(id){
+  const days = state.modalDraft.followUpDays;
+  await updateDoc('queue', id, {status:'completed', completedAt: nowISO(), followUpDays: days||null});
+  await log('Consultation completed', `Token ${findQueueEntry(id)?.token||''}${days?` · follow-up in ${days}d`:''}`);
+  state.modal = null; state.modalDraft = null; render();
+}
+
+function openDoctorModal(id){
+  const d = id ? getAll('doctors').find(x=>x.id===id) : {name:'',nameBn:'',specialty:'',specialtyBn:'',room:'',hoursStart:'09:00',hoursEnd:'17:00',avgConsultMin:10,status:'available',tokenPrefix:'',tokenStart:1,tokenDigits:2,dailyLimit:40};
+  state.modal = {type:'doctor', id};
+  state.modalDraft = Object.assign({}, d);
+  render();
+}
+function renderDoctorModal(){
+  const id = state.modal.id;
+  const d = state.modalDraft;
+  const set = (field,val)=>`state.modalDraft.${field}=${val}`;
+  return `
+    <div class="modal-head"><h3>${id?(LANG==='bn'?'ডাক্তার সম্পাদনা':'Edit doctor'):esc(T('addDoctor'))}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'নাম (ইংরেজি)':'Name (English)'} *</label><input type="text" value="${esc(d.name)}" placeholder="Dr. Jane Doe" oninput="${set('name','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'নাম (বাংলা)':'Name (Bangla)'}</label><input type="text" value="${esc(d.nameBn)}" placeholder="ডা. ..." oninput="${set('nameBn','this.value')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'বিভাগ (ইংরেজি)':'Specialty (English)'}</label><input type="text" value="${esc(d.specialty)}" oninput="${set('specialty','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'বিভাগ (বাংলা)':'Specialty (Bangla)'}</label><input type="text" value="${esc(d.specialtyBn)}" oninput="${set('specialtyBn','this.value')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'রুম':'Room'}</label><input type="text" value="${esc(d.room)}" oninput="${set('room','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'গড় পরামর্শ সময় (মিনিট)':'Avg consult (min)'}</label><input type="number" value="${esc(d.avgConsultMin)}" oninput="${set('avgConsultMin','this.value')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'শুরুর সময়':'Hours start'}</label><input type="time" value="${esc(d.hoursStart)}" oninput="${set('hoursStart','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'শেষের সময়':'Hours end'}</label><input type="time" value="${esc(d.hoursEnd)}" oninput="${set('hoursEnd','this.value')}"></div>
+    </div>
+    <div class="field"><label>${LANG==='bn'?'অবস্থা':'Status'}</label>
+      <select onchange="${set('status','this.value')}">
+        <option value="available" ${d.status==='available'?'selected':''}>${esc(T('available'))}</option>
+        <option value="busy" ${d.status==='busy'?'selected':''}>${esc(T('busy'))}</option>
+        <option value="offDuty" ${d.status==='offDuty'?'selected':''}>${esc(T('offDuty'))}</option>
+      </select>
+    </div>
+    <div class="section-title" style="margin-top:16px;">${LANG==='bn'?'সিরিয়াল টোকেন সেটিংস':'Queue token settings'}</div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'টোকেন প্রিফিক্স':'Token prefix'}</label><input type="text" maxlength="3" value="${esc(d.tokenPrefix||'')}" placeholder="A" oninput="${set('tokenPrefix','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'শুরুর নম্বর':'Starting number'}</label><input type="number" value="${esc(d.tokenStart ?? 1)}" min="0" oninput="${set('tokenStart','this.value')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>${LANG==='bn'?'সংখ্যার দৈর্ঘ্য':'Digit length'}</label><input type="number" value="${esc(d.tokenDigits ?? 2)}" min="1" max="6" oninput="${set('tokenDigits','this.value')}"></div>
+      <div class="field"><label>${LANG==='bn'?'দৈনিক রোগীর সীমা':'Daily patient limit'}</label><input type="number" value="${esc(d.dailyLimit ?? 40)}" min="0" oninput="${set('dailyLimit','this.value')}">
+        <div class="hint">${LANG==='bn'?'০ = কোনো সীমা নেই':'0 = no limit'}</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" data-action="doctor-confirm" data-id="${id||''}">${esc(T('save'))}</button>
+  `;
+}
+async function confirmDoctorSave(id){
+  const s = state.modalDraft;
+  const data = {
+    name:s.name, nameBn:s.nameBn,
+    specialty:s.specialty, specialtyBn:s.specialtyBn,
+    room:s.room, avgConsultMin: parseInt(s.avgConsultMin)||10,
+    hoursStart:s.hoursStart, hoursEnd:s.hoursEnd, status:s.status,
+    tokenPrefix: (s.tokenPrefix||'').toUpperCase().trim() || undefined,
+    tokenStart: parseInt(s.tokenStart), tokenDigits: parseInt(s.tokenDigits)||2,
+    dailyLimit: parseInt(s.dailyLimit)||0,
+  };
+  if(!data.name){ alert(T('required')); return; }
+  if(id) await updateDoc('doctors', id, data);
+  else await addDoc('doctors', data);
+  await log('Doctor saved', data.name);
+  state.modal = null; state.modalDraft = null; render();
+}
+async function removeDoctor(id){
+  const d = getAll('doctors').find(x=>x.id===id);
+  if(!d) return;
+  if(!confirm((LANG==='bn'?'মুছে ফেলবেন: ':'Delete ') + (LANG==='bn'?d.nameBn:d.name) + '?')) return;
+  await deleteDocById('doctors', id);
+  await log('Doctor removed', d.name);
+  render();
+}
+function openUserModal(id){
+  const u = id ? getAll('users').find(x=>x.id===id) : {username:'',pin:'',role:'reception',name:'',doctorId:''};
+  state.modal = {type:'user', id};
+  state.modalDraft = Object.assign({}, u);
+  render();
+}
+function renderUserModal(){
+  const id = state.modal.id;
+  const d = state.modalDraft;
+  const doctors = getAll('doctors');
+  return `
+    <div class="modal-head"><h3>${id?(LANG==='bn'?'স্টাফ সম্পাদনা':'Edit staff account'):(LANG==='bn'?'নতুন স্টাফ':'Add staff account')}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+    <div class="field"><label>${LANG==='bn'?'পূর্ণ নাম':'Full name'} *</label><input type="text" value="${esc(d.name)}" oninput="state.modalDraft.name=this.value"></div>
+    <div class="grid2">
+      <div class="field"><label>${esc(T('username'))} *</label><input type="text" value="${esc(d.username)}" autocapitalize="off" oninput="state.modalDraft.username=this.value"></div>
+      <div class="field"><label>${esc(T('pin'))} *</label><input type="text" value="${esc(d.pin)}" inputmode="numeric" maxlength="6" oninput="state.modalDraft.pin=this.value"></div>
+    </div>
+    <div class="field"><label>${LANG==='bn'?'ভূমিকা':'Role'}</label>
+      <select onchange="state.modalDraft.role=this.value; render();">
+        <option value="reception" ${d.role==='reception'?'selected':''}>${esc(T('reception'))}</option>
+        <option value="doctor" ${d.role==='doctor'?'selected':''}>${esc(T('doctorPanel'))}</option>
+        <option value="admin" ${d.role==='admin'?'selected':''}>${esc(T('admin'))}</option>
+      </select>
+    </div>
+    ${d.role==='doctor' ? `<div class="field"><label>${esc(T('chooseDoctor'))}</label>
+      <select onchange="state.modalDraft.doctorId=this.value">${doctors.map(dd=>`<option value="${dd.id}" ${d.doctorId===dd.id?'selected':''}>${esc(LANG==='bn'?dd.nameBn:dd.name)}</option>`).join('')}</select>
+    </div>` : ''}
+    <button class="btn btn-primary btn-block" data-action="user-confirm" data-id="${id||''}">${esc(T('save'))}</button>
+  `;
+}
+async function confirmUserSave(id){
+  const s = state.modalDraft;
+  const role = s.role;
+  const data = {
+    name:s.name, username:(s.username||'').trim(), pin:(s.pin||'').trim(), role,
+    doctorId: role==='doctor' ? (s.doctorId || (getAll('doctors')[0]||{}).id || null) : null
+  };
+  if(!data.name || !data.username || !data.pin){ alert(T('required')); return; }
+  const dupe = getAll('users').find(x=>x.username.toLowerCase()===data.username.toLowerCase() && x.id!==id);
+  if(dupe){ alert(LANG==='bn'?'এই ইউজারনেম আগে থেকেই আছে।':'That username is already taken.'); return; }
+  if(id) await updateDoc('users', id, data);
+  else await addDoc('users', data);
+  await log('Staff account saved', data.username);
+  state.modal = null; state.modalDraft = null; render();
+}
+async function removeUser(id){
+  const u = getAll('users').find(x=>x.id===id);
+  if(!u) return;
+  if(!confirm((LANG==='bn'?'মুছে ফেলবেন: ':'Delete ') + u.username + '?')) return;
+  await deleteDocById('users', id);
+  await log('Staff account removed', u.username);
+  render();
+}
+
+/* ============================== EVENT WIRING ============================== */
+let assetsCap = null;
+async function initAssets(){ try{ assetsCap = await claude.use('assets'); }catch(e){ assetsCap=null; } }
+
+/* ============================== ROLE-BASED PERMISSIONS ============================== */
+// Admin can always do everything a Doctor or Receptionist can (item 4: admin override) —
+// enforced by checking admin first, before consulting the per-role list at all.
+// NOTE (honesty about limits): this is an application-layer (client-side) permission
+// check. It stops the UI from offering/running actions outside a role, which is what
+// "properly separated role powers" means for a static frontend. It is NOT a substitute
+// for server-side enforcement — with the current phase-1 permissive RLS policy (see
+// schema.sql), anyone with the anon key could still call the Supabase API directly and
+// bypass this. Real enforcement needs Supabase Auth + per-role RLS policies, which is
+// still the open item flagged earlier.
+const ADMIN_ONLY_ACTIONS = new Set([
+  'open-doctor-modal','doctor-confirm','delete-doctor',
+  'open-user-modal','user-confirm','delete-user',
+  'pick-logo-file','clear-logo','settings-save',
+  'card-remove-icon','card-save','card-reset-default',
+]);
+const STAFF_ONLY_ACTIONS = new Set([ // reception, doctor, admin — not the public/patient
+  'q-call','q-start','q-complete','open-complete-modal','complete-confirm',
+  'q-missed','q-skip','q-resume','q-pause','q-cancel',
+  'open-priority-modal','priority-confirm',
+  'open-walkin-modal','walkin-confirm','relay-generate','relay-host-start','relay-host-apply-answer',
+  'ai-ask','admin-tab','doctor-tab',
+  'export-excel','export-word',
+  'appt-checkin','appt-cancel',
+]);
+function can(action){
+  const role = state.session && state.session.role;
+  if(role==='admin') return true; // admin override — never blocked
+  if(ADMIN_ONLY_ACTIONS.has(action)) return false;
+  if(STAFF_ONLY_ACTIONS.has(action)) return !!role; // any logged-in staff (reception/doctor)
+  return true; // everything else (booking, precheck, track, language, etc.) is public
+}
+function denyToast(){
+  state.permDenied = LANG==='bn' ? 'এই কাজটি করার অনুমতি আপনার নেই।' : "You don't have permission for that.";
+  render();
+  setTimeout(()=>{ state.permDenied=null; render(); }, 2500);
+}
+
+function wireGlobal(){
+  const app = document.getElementById('app');
+  app.onclick = async (e)=>{
+    const t = e.target.closest('[data-action]');
+    if(!t){
+      if(e.target.closest('.modal-bg') && !e.target.closest('[data-stop]')) { state.modal=null; state.modalDraft=null; render(); }
+      return;
+    }
+    const action = t.dataset.action;
+    if(!can(action)){ denyToast(); return; }
+    try{
+    switch(action){
+      case 'go-home': state.precheckDraft=null; go('home'); break;
+      case 'go-precheck': go('precheck'); break;
+      case 'go-quicktoken': go('quicktoken'); break;
+      case 'go-book': go('book'); break;
+      case 'go-track': go('track'); break;
+      case 'go-stafflogin': go('stafflogin'); break;
+      case 'go-waitingroom': go('waitingroom'); break;
+      case 'go-relay': go('relay'); break;
+      case 'relay-generate': {
+        const id = document.getElementById('relay_patient').value;
+        const entry = findQueueEntry(id);
+        if(entry) state.relayCode = buildRelayCode(entry);
+        render(); break;
+      }
+      case 'relay-decode': {
+        state.recoveryCodeInput = document.getElementById('relay_input').value;
+        render(); break;
+      }
+      case 'relay-host-start': {
+        const id = document.getElementById('relay_host_patient').value;
+        if(id) await relayHostStart(id);
+        break;
+      }
+      case 'relay-host-apply-answer': {
+        const code = document.getElementById('relay_answer_input').value;
+        if(code) await relayHostApplyAnswer(code);
+        break;
+      }
+      case 'relay-guest-join': {
+        const code = document.getElementById('relay_offer_input').value;
+        if(code) await relayGuestJoin(code);
+        break;
+      }
+      case 'relay-stop': relayResetLocal(); render(); break;
+      case 'setlang': setLang(t.dataset.lang); break;
+      case 'toggle-bigtext': document.body.classList.toggle('big-text'); render(); break;
+      case 'toggle-contrast': document.body.classList.toggle('high-contrast'); render(); break;
+      case 'logout': doLogout(); break;
+      case 'staff-login': doLogin(); break;
+      case 'close-modal': state.modal=null; state.modalDraft=null; render(); break;
+      case 'dismiss-turn-flash': state.yourTurnFlash=null; render(); break;
+      case 'copy-token': try{ await navigator.clipboard.writeText(t.dataset.token); alert(LANG==='bn'?'কপি হয়েছে!':'Copied!'); }catch(e){} break;
+      case 'clear-active-token': state.activeTokenId=null; localStorage.removeItem('clinic_active_token'); render(); break;
+      case 'track-find': {
+        const val = document.getElementById('track_input').value.trim().toUpperCase();
+        state.trackInput = val;
+        const found = getAll('queue').find(q=>q.token.toUpperCase()===val);
+        if(found){ state.activeTokenId=found.id; localStorage.setItem('clinic_active_token', found.id); state.trackNotFound=false; }
+        else state.trackNotFound = true;
+        render();
+        break;
+      }
+      case 'pc-next': collectStepInputs(); state.precheckDraft.step++; render(); break;
+      case 'pc-back': collectStepInputs(); state.precheckDraft.step--; render(); break;
+      case 'pc-submit': collectStepInputs(); await submitPrecheck(); break;
+      case 'pick-file': document.getElementById('f_file').click(); break;
+      case 'rm-file': state.precheckDraft.files.splice(parseInt(t.dataset.i),1); render(); break;
+      case 'voice-read': readAloud(t.dataset.text); break;
+      case 'quick-submit': await submitQuick(); break;
+      case 'book-submit': await submitBooking(); break;
+      case 'open-walkin-modal': openWalkinModal(); break;
+      case 'walkin-confirm': await confirmWalkin(); break;
+      case 'q-call': {
+        const id=t.dataset.id, entry=findQueueEntry(id);
+        // set any other 'called' for same doctor back? allow one active
+        await updateDoc('queue', id, {status:'called', calledAt: nowISO()});
+        await log('Called patient', `Token ${entry.token}`);
+        break;
+      }
+      case 'q-start': { const id=t.dataset.id; await updateDoc('queue', id, {status:'in-consult'}); await log('Consultation started', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'q-complete': { const id=t.dataset.id; await updateDoc('queue', id, {status:'completed', completedAt: nowISO()}); await log('Consultation completed', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'open-complete-modal': openCompleteModal(t.dataset.id); break;
+      case 'complete-confirm': await confirmComplete(t.dataset.id); break;
+      case 'q-missed': { const id=t.dataset.id; await updateDoc('queue', id, {status:'missed'}); await log('Marked no-show', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'q-skip': { const id=t.dataset.id; await updateDoc('queue', id, {status:'skipped'}); await log('Skipped', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'q-resume': { const id=t.dataset.id; await updateDoc('queue', id, {status:'waiting'}); await log('Resumed', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'q-pause': { const id=t.dataset.id; await updateDoc('queue', id, {status:'paused'}); await log('Paused', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'q-cancel': { const id=t.dataset.id; await updateDoc('queue', id, {status:'cancelled'}); await log('Cancelled', `Token ${findQueueEntry(id)?.token}`); break; }
+      case 'open-priority-modal': openPriorityModal(t.dataset.id); break;
+      case 'priority-confirm': await confirmPriority(t.dataset.id); break;
+      case 'doctor-tab': state.doctorTab = t.dataset.tab; render(); break;
+      case 'admin-tab': state.adminTab = t.dataset.tab; render(); break;
+      case 'ai-ask': await askAssistant(); break;
+      case 'open-doctor-modal': openDoctorModal(t.dataset.id || null); break;
+      case 'doctor-confirm': await confirmDoctorSave(t.dataset.id || null); break;
+      case 'delete-doctor': await removeDoctor(t.dataset.id); break;
+      case 'open-user-modal': openUserModal(t.dataset.id || null); break;
+      case 'user-confirm': await confirmUserSave(t.dataset.id || null); break;
+      case 'delete-user': await removeUser(t.dataset.id); break;
+      case 'pick-logo-file': document.getElementById('logo_file').click(); break;
+      case 'clear-logo': await saveSettings({logoAssetUrl:''}); break;
+      case 'settings-save': await doSaveSettings(); break;
+      case 'export-excel': exportExcel(t.dataset.doctor || null); break;
+      case 'export-word': exportWord(t.dataset.doctor || null); break;
+      case 'card-remove-icon': removeCardIcon(); break;
+      case 'card-save': await saveCardEdit(); break;
+      case 'card-reset-default': await resetCardToDefault(); break;
+      case 'appt-checkin': await checkInAppointment(t.dataset.id); break;
+      case 'appt-cancel': await cancelAppointment(t.dataset.id); break;
+      case 'refresh-now': await refreshFromServer(); break;
+    }
+    }catch(err){
+      console.error('Action failed:', action, err);
+      state.submitting = false;
+      alert((LANG==='bn' ? 'কিছু একটা ভুল হয়েছে: ' : 'Something went wrong: ') + (err && err.message ? err.message : String(err)));
+      render();
+    }
+  };
+  // pill selects
+  const bslots = document.getElementById('b_slots');
+  if(bslots) bslots.onclick = (e)=>{ const b=e.target.closest('button'); if(!b) return; state.bookingDraft.time=b.dataset.slot; render(); };
+  const priOpts = document.getElementById('pri_opts');
+  if(priOpts) priOpts.onclick = (e)=>{ const b=e.target.closest('button'); if(!b) return; state.modalDraft.priSel=b.dataset.pri; render(); };
+  // doctor select persist for book/quick
+  const bdoc = document.getElementById('b_doctor'); if(bdoc) bdoc.onchange=()=>{ state.bookingDraft.doctorId=bdoc.value; };
+  const bdate = document.getElementById('b_date'); if(bdate) bdate.onchange=()=>{ state.bookingDraft.date=bdate.value; };
+  const qdoc = document.getElementById('q_doctor'); if(qdoc) qdoc.onchange=()=>{ state.quickDraft.doctorId=qdoc.value; };
+  // file input
+  const finput = document.getElementById('f_file');
+  if(finput) finput.onchange = (e)=>{
+    const files = Array.from(e.target.files||[]);
+    files.forEach(f=> state.precheckDraft.files.push({name:f.name, blob:f}));
+    render();
+  };
+  // logo upload
+  const logoFile = document.getElementById('logo_file');
+  if(logoFile) logoFile.onchange = async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!assetsCap){ alert(LANG==='bn'?'এই মুহূর্তে ছবি আপলোড সম্ভব নয়।':'Image upload is not available right now.'); return; }
+    try{
+      const res = await assetsCap.upload(file);
+      await saveSettings({logoAssetUrl: res.url});
+    }catch(err){ alert(LANG==='bn'?'আপলোড ব্যর্থ হয়েছে।':'Upload failed.'); }
+  };
+}
+async function doSaveSettings(){
+  const g = id=>document.getElementById(id);
+  await saveSettings({
+    logoEmoji: g('set_logoEmoji').value || '🏥',
+    clinicName: {en: g('set_nameEn').value, bn: g('set_nameBn').value},
+    clinicSub: {en: g('set_subEn').value, bn: g('set_subBn').value},
+    heroTitle: {en: g('set_heroTEn').value, bn: g('set_heroTBn').value},
+    heroSub: {en: g('set_heroSEn').value, bn: g('set_heroSBn').value},
+    showDemoAccounts: g('set_showDemo').checked,
+    font: g('set_font').value,
+    theme: {
+      primary: g('set_c_primary').value, secondary: g('set_c_secondary').value,
+      accent: g('set_c_accent').value, bg: g('set_c_bg').value,
+      text: g('set_c_text').value, button: g('set_c_button').value,
+      cardBg: g('set_c_cardbg').value, cardBorder: g('set_c_cardborder').value,
+      subtitle: g('set_c_subtitle').value,
+    },
+    nearTurnThreshold: parseInt(g('set_nearturn').value)||CONFIG.NEAR_TURN_DEFAULT,
+  });
+  await log('App settings updated', '');
+}
+const FONT_OPTIONS = {
+  inter:        { label:'Inter (default)', css:`'Inter', 'Noto Sans Bengali', system-ui, sans-serif` },
+  poppins:      { label:'Poppins',         css:`'Poppins', 'Noto Sans Bengali', system-ui, sans-serif` },
+  nunito:       { label:'Nunito',          css:`'Nunito', 'Noto Sans Bengali', system-ui, sans-serif` },
+  roboto:       { label:'Roboto',          css:`'Roboto', 'Noto Sans Bengali', system-ui, sans-serif` },
+  merriweather: { label:'Merriweather (serif)', css:`'Merriweather', 'Noto Sans Bengali', Georgia, serif` },
+  hindsiliguri: { label:'Hind Siliguri (Bangla-first)', css:`'Hind Siliguri', 'Inter', system-ui, sans-serif` },
+};
+function previewFont(fontKey){ if(FONT_OPTIONS[fontKey]) setVars({'--font': FONT_OPTIONS[fontKey].css}); }
+// A colour swatch paired with an editable hex text field, kept in sync both ways.
+// `onChangeExpr` is a JS expression string using variable `v` for the new hex value.
+function colorFieldHTML(label, idBase, value, onChangeExpr){
+  const val = (value || '#000000').toUpperCase();
+  return `<div class="field">
+    <label>${esc(label)}</label>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="color" id="${idBase}" value="${esc(val)}" style="flex-shrink:0;" oninput="const v=this.value.toUpperCase(); document.getElementById('${idBase}_hex').value=v; ${onChangeExpr}">
+      <input type="text" id="${idBase}_hex" value="${esc(val)}" maxlength="7" placeholder="#RRGGBB" style="flex:1;font-family:monospace;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase(); if(/^#[0-9A-F]{6}$/.test(this.value)){ const v=this.value; document.getElementById('${idBase}').value=v; ${onChangeExpr} }">
+    </div>
+  </div>`;
+}
+const THEME_FIELD_MAP = {
+  primary: v=>{ setVars({'--teal':v,'--teal-dark':v,'--teal-tint':v+'22'}); },
+  secondary: v=>{ setVars({'--blue':v,'--blue-tint':v+'22'}); },
+  accent: v=>{ setVars({'--warning':v,'--warning-tint':v+'22'}); },
+  bg: v=>setVars({'--bg':v}),
+  text: v=>setVars({'--text':v}),
+  cardBg: v=>setVars({'--surface':v, '--surface-2':v}),
+  cardBorder: v=>setVars({'--border':v}),
+  subtitle: v=>setVars({'--text-dim':v}),
+};
+function setVars(obj){ const r=document.documentElement.style; Object.entries(obj).forEach(([k,v])=>r.setProperty(k,v)); }
+// Live preview: applies a colour to the page immediately as the admin picks it,
+// WITHOUT saving — matches item 6. Actual persistence only happens on Save.
+function previewThemeField(field, value){ if(THEME_FIELD_MAP[field]) THEME_FIELD_MAP[field](value); }
+function applyThemeVars(){
+  previewFont(SETTINGS.font || 'inter');
+  const t = SETTINGS.theme; if(!t) return;
+  Object.keys(THEME_FIELD_MAP).forEach(field=>{ if(t[field]) THEME_FIELD_MAP[field](t[field]); });
+}
+
+/* ============================== INIT ============================== */
+(async function init(){
+  const saved = localStorage.getItem('clinic_session');
+  if(saved){ try{ state.session = JSON.parse(saved); state.view = state.session.role; }catch(e){} }
+  const params = new URLSearchParams(location.search);
+  if(params.get('view')==='waitingroom') state.view='waitingroom';
+  document.documentElement.lang = LANG;
+  render();
+  await initCapabilities();
+  await initAssets();
+  if('serviceWorker' in navigator){
+    try{ await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW registration failed', e); }
+  }
+})();
+</script>
+</body>
+</html>
